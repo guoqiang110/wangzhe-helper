@@ -136,7 +136,7 @@ html,body{margin:0;padding:0;background:#0D0D1A;color:#F5F0E8;font-family:-apple
       <div class="mt-4 text-center" style="padding:12px 0 60px">
         <div style="display:flex;gap:10px">
           <button class="btn-secondary" style="flex:1" onclick="showPage('counter')"><i class="fa fa-shield"></i> 克制查询</button>
-          <button class="btn-secondary" style="flex:1" onclick="showPage('team')"><i class="fa fa-users"></i> 阵容检查</button>
+          <button class="btn-secondary" style="flex:1" onclick="showPage('team')"><i class="fa fa-users"></i> 阵容克制</button>
         </div>
       </div>
     </div>
@@ -163,7 +163,7 @@ html,body{margin:0;padding:0;background:#0D0D1A;color:#F5F0E8;font-family:-apple
   <div class="page" id="page-counter">
     <div class="tab-header">
       <h1>⚔️ 克制查询</h1>
-      <p>选一个对面英雄，教你出装针对</p>
+      <p>选择英雄 → 看谁克制你，你克制谁</p>
     </div>
     <div class="page-area">
       <div class="search-box"><i class="fa fa-search" style="color:#D4A843"></i><input type="text" id="counterSearch" placeholder="搜索英雄名字..." oninput="filterCounterHeroes()"></div>
@@ -175,12 +175,12 @@ html,body{margin:0;padding:0;background:#0D0D1A;color:#F5F0E8;font-family:-apple
   <!-- ======== PAGE: TEAM ======== -->
   <div class="page" id="page-team">
     <div class="tab-header">
-      <h1>✅ 阵容检查</h1>
-      <p>点选 5 个位置，看看阵容缺什么</p>
+      <h1>✅ 阵容克制</h1>
+      <p>填入敌方 5 个英雄 → 推荐克制阵容</p>
     </div>
     <div class="page-area">
       <div id="teamSlots" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px"></div>
-      <button class="btn-primary" onclick="checkTeam()"><i class="fa fa-check-circle"></i> 检查阵容</button>
+      <button class="btn-primary" onclick="checkTeam()"><i class="fa fa-crosshairs"></i> 推荐我方克制阵容</button>
       <div id="teamResult" style="padding-bottom:60px"></div>
     </div>
   </div>
@@ -285,10 +285,308 @@ const HEROES = {
 // Flatten hero list for search
 const ALL_HEROES = Object.entries(HEROES).flatMap(([role,list]) => list.map(h=>({...h,role})))
 
-// ======== APP STATE ========
+// ======== TEAM CHECK ========
+const SLOT_LABELS = ['对抗路','打野','中路','发育路','游走']
 let currentTeam = [null,null,null,null,null]
 let modalCallback = null
 let modalSlotIndex = -1
+let isTeamMode = 'enemy' // 'enemy' = 敌方阵容, 'ally' = 我方阵容
+
+// ======== COUNTER DATA ========
+// key: 英雄名字, value: 克制该英雄的英雄列表
+const COUNTER_MAP = {
+  // 对抗路
+  '亚瑟':['吕布','貂蝉','芈月','孙尚香'],
+  '铠':['吕布','芈月','老夫子','东皇太一'],
+  '吕布':['芈月','老夫子','公孙离','马可波罗'],
+  '夏侯惇':['吕布','芈月','貂蝉'],
+  '程咬金':['吕布','芈月','老夫子','哪吒'],
+  '白起':['吕布','甄姬','貂蝉','庄周'],
+  '廉颇':['吕布','貂蝉','芈月'],
+  '项羽':['吕布','貂蝉','庄周'],
+  '老夫子':['芈月','庄周','大乔','铠'],
+  '芈月':['盾山','张良','东皇太一'],
+  '猪八戒':['吕布','貂蝉','芈月'],
+  '关羽':['金蝉','张良','东皇太一','不知火舞','孙膑'],
+  // 发育路
+  '后羿':['兰陵王','阿轲','李白','铠','孙悟空','宫本武藏'],
+  '鲁班七号':['兰陵王','阿轲','李白','铠','孙悟空'],
+  '狄仁杰':['兰陵王','铠','老夫子','宫本武藏'],
+  '伽罗':['兰陵王','阿轲','李白','宫本武藏','孙悟空','铠'],
+  '孙尚香':['兰陵王','赵云','铠','宫本武藏'],
+  '黄忠':['吕布','王昭君','甄姬','安琪拉','干将莫邪'],
+  '马可波罗':['公孙离','狄仁杰','铠','宫本武藏','张良'],
+  '虞姬':['露娜','不知火舞','司马懿','墨子','芈月'],
+  '李元芳':['狄仁杰','宫本武藏','兰陵王'],
+  '艾琳':['盾山','宫本武藏','兰陵王','铠'],
+  '戈娅':['铠','兰陵王','宫本武藏','张良'],
+  // 中路
+  '小乔':['兰陵王','阿轲','李白','孙悟空','上官婉儿'],
+  '安琪拉':['兰陵王','阿轲','李白','不知火舞'],
+  '妲己':['兰陵王','阿轲','李白','孙悟空','貂蝉'],
+  '王昭君':['兰陵王','阿轲','吕布','芈月','庄周'],
+  '甄姬':['兰陵王','阿轲','李白','庄周','芈月'],
+  '米莱狄':['周瑜','安琪拉','王昭君','甄姬','嬴政'],
+  '墨子':['兰陵王','阿轲','李白','貂蝉'],
+  '周瑜':['兰陵王','阿轲','芈月','盾山'],
+  '诸葛亮':['张良','东皇太一','金蝉','司马懿'],
+  '金蝉':['盾山','嬴政','干将莫邪'],
+  '弈星':['兰陵王','阿轲','李白','盾山'],
+  // 打野
+  '典韦':['貂蝉','芈月','吕布','孙尚香'],
+  '赵云':['金蝉','东皇太一','张良','盘古'],
+  '铠（打野）':['吕布','芈月','老夫子','东皇太一'],
+  '娜可露露':['金蝉','东皇太一','张良','赵云'],
+  '刘备':['铠','老夫子','吕布','典韦'],
+  '孙悟空':['金蝉','张良','东皇太一','刘备'],
+  '兰陵王':['李元芳','鬼谷子','武则天','虞姬'],
+  '阿轲':['金蝉','张良','东皇太一','宫本武藏'],
+  '李白':['金蝉','张良','东皇太一','张飞'],
+  '宫本武藏':['金蝉','张良','东皇太一','铠'],
+  '司空震':['张良','东皇太一','盾山','金蝉'],
+  // 游走
+  '蔡文姬':['盾山','鬼谷子','东皇太一','宫本武藏'],
+  '瑶':['盾山','鬼谷子','东皇太一','干将莫邪'],
+  '庄周':['东皇太一','张良','孙膑'],
+  '牛魔':['庄周','甄姬','孙膑','蔡文姬'],
+  '张飞':['庄周','吕布','貂蝉','甄姬'],
+  '东皇太一':['庄周','孙膑','大乔','蔡文姬'],
+  '刘禅':['庄周','甄姬','王昭君','孙膑'],
+  '大乔':['盾山','关羽','鬼谷子','孙膑'],
+  '孙膑':['盾山','鬼谷子','东皇太一','兰陵王'],
+  '明世隐':['盾山','鬼谷子','兰陵王','哪吒'],
+  '鬼谷子':['李元芳','武则天','关羽','庄周'],
+}
+
+// Build inverse map: who does this hero counter
+function getCounters(heroName) {
+  return COUNTER_MAP[heroName] || []
+}
+function getCounteredBy(heroName) {
+  return Object.entries(COUNTER_MAP)
+    .filter(([k,v]) => v.includes(heroName) && k !== heroName)
+    .map(([k]) => k)
+}
+
+// ======== TEAM SUGGESTIONS ========
+function suggestCounterPicks(enemyTeam) {
+  // Score each hero based on how many enemy heroes they counter
+  const scores = {}
+  ALL_HEROES.forEach(h => { scores[h.name] = 0 })
+
+  enemyTeam.forEach(enemy => {
+    const counters = getCounters(enemy.name)
+    counters.forEach(c => {
+      const hero = ALL_HEROES.find(h => h.name === c)
+      if (hero) scores[c] = (scores[c] || 0) + 1
+    })
+    // Bonus for role counter
+    if (enemy.role === '发育路') {
+      ['兰陵王','阿轲','铠','孙悟空','宫本武藏','赵云'].forEach(a => { if (scores[a]!==undefined) scores[a] += 0.5 })
+    }
+    if (enemy.role === '中路') {
+      ['兰陵王','阿轲','张良','金蝉','东皇太一'].forEach(a => { if (scores[a]!==undefined) scores[a] += 0.3 })
+    }
+  })
+
+  // Best picks per role
+  const bestByRole = {}
+  ALL_HEROES.forEach(h => {
+    if (!bestByRole[h.role]) bestByRole[h.role] = []
+    bestByRole[h.role].push({name:h.name,role:h.role,score:scores[h.name]||0,diff:h.diff,desc:h.desc})
+  })
+
+  Object.keys(bestByRole).forEach(r => {
+    bestByRole[r].sort((a,b) => b.score - a.score || a.diff - b.diff)
+    bestByRole[r] = bestByRole[r].slice(0,3)
+  })
+
+  // Check what enemy team lacks
+  const hasMage = enemyTeam.some(h => h.role === '中路')
+  const hasADC = enemyTeam.some(h => h.role === '发育路')
+  const hasTank = enemyTeam.some(h => ['亚瑟','夏侯惇','程咬金','白起','廉颇','项羽','猪八戒','牛魔','张飞','东皇太一','刘禅'].includes(h.name))
+  const hasJungle = enemyTeam.some(h => h.role === '打野')
+
+  const weaknesses = []
+  if (!hasMage) weaknesses.push('对面没有法师，可以不出魔抗')
+  if (!hasADC) weaknesses.push('对面没有射手，推塔慢')
+  if (!hasTank) weaknesses.push('对面比较脆，选爆发英雄')
+  if (!hasJungle) weaknesses.push('对面没有打野')
+
+  return { bestByRole, weaknesses }
+}
+
+// ======== TEAM PAGE ========
+function renderTeamSlots(){
+  const container = document.getElementById('teamSlots')
+  container.innerHTML = currentTeam.map((hero,i)=>`
+    <div class="team-slot ${hero?'filled':''}" onclick="openTeamPicker(${i})">
+      ${hero?`
+        <div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="hero-avatar" style="width:44px;height:44px;font-size:18px;border-radius:11px;background:${getAvatarColor(hero.name)}">${hero.name[0]}</div>
+            <div style="text-align:left">
+              <div style="font-size:16px;font-weight:600">${hero.name}</div>
+              <div class="role-tag">${ROLES[hero.role].icon} ${hero.role}</div>
+            </div>
+          </div>
+        </div>
+      `:`
+        <div style="color:#555;font-size:15px"><i class="fa fa-plus-circle" style="color:#D4A843;margin-right:6px"></i>敌方 ${SLOT_LABELS[i]}</div>
+      `}
+    </div>
+  `).join('')
+}
+function clearTeam(){
+  currentTeam = [null,null,null,null,null]
+  renderTeamSlots()
+  document.getElementById('teamResult').innerHTML = ''
+}
+function openTeamPicker(index){
+  modalSlotIndex = index
+  modalCallback = selectTeamHero
+  document.getElementById('modalTitle').textContent = `选择敌方 ${SLOT_LABELS[index]} 英雄`
+  document.getElementById('modalSearch').value = ''
+  renderModalHeroes()
+  document.getElementById('modalOverlay').classList.add('show')
+}
+function renderModalHeroes(filter=''){
+  const grid = document.getElementById('modalHeroGrid')
+  const heroes = filter ? ALL_HEROES.filter(h=>h.name.includes(filter)) : ALL_HEROES
+  grid.innerHTML = heroes.map(h=>{
+    const sel = currentTeam[modalSlotIndex]?.name===h.name?' selected':''
+    return `<div class="hero-grid-item${sel}" onclick="selectTeamHero('${h.name}','${h.role}')">
+      <div class="grid-avatar" style="background:${getAvatarColor(h.name)}">${h.name[0]}</div>
+      <div>${h.name}</div>
+    </div>`
+  }).join('')
+}
+function filterModalHeroes(){
+  renderModalHeroes(document.getElementById('modalSearch').value)
+}
+function selectTeamHero(name,role){
+  const hero = ALL_HEROES.find(h=>h.name===name&&h.role===role)
+  currentTeam[modalSlotIndex] = hero
+  document.getElementById('modalOverlay').classList.remove('show')
+  renderTeamSlots()
+  document.getElementById('teamResult').innerHTML = ''
+}
+function closeModal(e){
+  if(e.target===document.getElementById('modalOverlay')){
+    document.getElementById('modalOverlay').classList.remove('show')
+  }
+}
+function checkTeam(){
+  const result = document.getElementById('teamResult')
+  const filled = currentTeam.filter(h=>h!==null)
+  if(filled.length<5){
+    result.innerHTML = `<div class="analysis-card warn"><div class="analysis-item"><span style="font-size:20px">⚠️</span><span>还差 ${5-filled.length} 个敌方英雄没选</span></div></div>`
+    return
+  }
+
+  const { bestByRole, weaknesses } = suggestCounterPicks(currentTeam)
+
+  let html = `
+    <div class="analysis-card" style="margin-top:12px">
+      <div style="font-size:16px;font-weight:600;margin-bottom:10px">🛡️ 敌方阵容</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
+        ${currentTeam.map(h=>`<span style="background:rgba(212,168,67,.1);border-radius:8px;padding:4px 10px;font-size:13px">${ROLES[h.role].icon} ${h.name}</span>`).join('')}
+      </div>
+      ${weaknesses.length>0?`<div style="background:rgba(76,175,80,.1);border-radius:10px;padding:10px;margin-bottom:14px;font-size:13px;line-height:1.6">
+        ${weaknesses.map(w=>`<div>✅ ${w}</div>`).join('')}
+      </div>`:''}
+      <div style="font-size:16px;font-weight:600;margin-bottom:10px">⚔️ 推荐克制英雄</div>
+  `
+
+  const roleOrder = ['对抗路','打野','中路','发育路','游走']
+  roleOrder.forEach(role => {
+    const picks = bestByRole[role]
+    if (!picks || picks.length === 0) return
+    html += `<div style="margin-bottom:12px">
+      <div style="font-size:13px;color:#D4A843;margin-bottom:6px">${ROLES[role].icon} ${role}</div>`
+    picks.forEach((p,i) => {
+      const stars = '★'.repeat(p.diff)+'☆'.repeat(5-p.diff)
+      const scoreBar = p.score > 0 ? '<span style="color:#4CAF50;font-size:11px"> 克制' + Math.round(p.score) + '人</span>' : '<span style="color:#888;font-size:11px"> 一般</span>'
+      html += `<div class="team-slot filled" style="min-height:auto;padding:10px 12px;margin-bottom:4px;justify-content:flex-start;gap:10px" onclick="showHeroDetail('${role}','${p.name}')">
+        <div class="hero-avatar" style="width:36px;height:36px;font-size:15px;border-radius:9px;background:${getAvatarColor(p.name)}">${p.name[0]}</div>
+        <div>
+          <div style="font-size:14px;font-weight:500">${p.name} ${scoreBar}</div>
+          <div style="font-size:11px;color:#888">${p.desc}</div>
+        </div>
+      </div>`
+    })
+    html += `</div>`
+  })
+
+  html += `<button class="btn-secondary" onclick="clearTeam()" style="margin-top:4px"><i class="fa fa-refresh"></i> 重新选择</button>`
+  html += `</div>`
+  result.innerHTML = html
+}
+
+// ======== COUNTER PAGE ========
+function renderCounterHeroes(filter=''){
+  const list = document.getElementById('counterHeroList')
+  const heroes = filter ? ALL_HEROES.filter(h=>h.name.includes(filter)) : ALL_HEROES
+  list.innerHTML = heroes.map(h=>`
+    <div class="counter-card" onclick="showCounterDetail('${h.name}','${h.role}')">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="hero-avatar" style="width:40px;height:40px;font-size:16px;border-radius:10px;background:${getAvatarColor(h.name)}">${h.name[0]}</div>
+        <div>
+          <div style="font-size:16px;font-weight:600">${h.name}</div>
+          <div style="font-size:11px;color:#888">${ROLES[h.role].icon} ${h.role} · ${h.desc}</div>
+        </div>
+      </div>
+    </div>
+  `).join('')
+}
+function filterCounterHeroes(){
+  const v = document.getElementById('counterSearch').value
+  renderCounterHeroes(v)
+  document.getElementById('counterResult').innerHTML = ''
+}
+function showCounterDetail(name, role){
+  const hero = ALL_HEROES.find(h=>h.name===name && h.role===role)
+  if(!hero) return
+  const counters = getCounters(name)
+  const counteredBy = getCounteredBy(name)
+
+  document.getElementById('counterResult').innerHTML = `
+    <div class="counter-result">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <div class="hero-avatar" style="width:52px;height:52px;font-size:22px;border-radius:13px;background:${getAvatarColor(hero.name)}">${hero.name[0]}</div>
+        <div><div style="font-size:20px;font-weight:600">${hero.name}</div><div style="font-size:12px;color:#888">${ROLES[hero.role].icon} ${hero.role} · 难度 ${'★'.repeat(hero.diff)}</div></div>
+      </div>
+
+      <div style="background:rgba(244,67,54,.1);border-radius:12px;padding:14px;margin-bottom:12px;border-left:3px solid #F44336">
+        <div style="font-size:14px;font-weight:600;color:#F44336;margin-bottom:8px"><i class="fa fa-shield"></i> 克制 ${hero.name} 的英雄</div>
+        ${counters.length>0?`<div style="display:flex;flex-wrap:wrap;gap:6px">${counters.map(c=>{
+          const ch = ALL_HEROES.find(h=>h.name===c)
+          return `<span style="background:rgba(244,67,54,.08);border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer" onclick="showCounterDetail('${c}','${ch?ch.role:''}')">${ch?ROLES[ch.role].icon:''} ${c}</span>`
+        }).join('')}</div>`:'<div style="font-size:13px;color:#888">暂无记录（遇到刺客和爆发英雄要小心）</div>'}
+      </div>
+
+      <div style="background:rgba(76,175,80,.1);border-radius:12px;padding:14px;margin-bottom:12px;border-left:3px solid #4CAF50">
+        <div style="font-size:14px;font-weight:600;color:#4CAF50;margin-bottom:8px"><i class="fa fa-crosshairs"></i> ${hero.name} 克制的英雄</div>
+        ${counteredBy.length>0?`<div style="display:flex;flex-wrap:wrap;gap:6px">${counteredBy.map(c=>{
+          const ch = ALL_HEROES.find(h=>h.name===c)
+          return `<span style="background:rgba(76,175,80,.08);border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer" onclick="showCounterDetail('${c}','${ch?ch.role:''}')">${ch?ROLES[ch.role].icon:''} ${c}</span>`
+        }).join('')}</div>`:'<div style="font-size:13px;color:#888">暂无记录</div>'}
+      </div>
+
+      <details style="background:rgba(212,168,67,.06);border-radius:12px;padding:8px 14px;margin-bottom:8px">
+        <summary style="font-size:14px;font-weight:500;color:#D4A843;cursor:pointer;padding:4px 0">📦 推荐出装 (点击展开)</summary>
+        <div style="margin-top:8px">
+          ${hero.equip.map((item,i)=>`<div class="item-slot" style="padding:8px 10px;margin-bottom:4px"><span class="item-num">${i+1}</span><span class="item-name">${item}</span>${i===0||item===hero.core.split('+')[0]||item===hero.core.split('+')[1]?'<span class="item-badge">核心</span>':''}</div>`).join('')}
+          ${hero.replace?`<div class="replace-banner" style="font-size:12px;padding:8px 10px"><i class="fa fa-refresh" style="color:#D4A843"></i> ${hero.replace}</div>`:''}
+        </div>
+      </details>
+      <details style="background:rgba(212,168,67,.06);border-radius:12px;padding:8px 14px;margin-bottom:8px">
+        <summary style="font-size:14px;font-weight:500;color:#D4A843;cursor:pointer;padding:4px 0">📝 铭文 (点击展开)</summary>
+        <div class="rune-box" style="margin-top:8px;margin-bottom:0"><div class="rune-text">${hero.runes}</div></div>
+      </details>
+    </div>
+  `
+}
 
 // ======== AVATAR COLORS ========
 const AVATAR_COLORS = ['#E74C3C','#F39C12','#2ECC71','#3498DB','#9B59B6','#1ABC9C','#E91E63','#FF5722','#4CAF50','#00BCD4']
@@ -360,142 +658,6 @@ function showHeroDetail(role,name){
     ${hero.tips.map(t=>`<div class="tip-box">${t}</div>`).join('')}
   `
   showPage('herodetail')
-}
-
-// ======== COUNTER PAGE ========
-function renderCounterHeroes(filter=''){
-  const list = document.getElementById('counterHeroList')
-  const heroes = filter ? ALL_HEROES.filter(h=>h.name.includes(filter)) : ALL_HEROES
-  list.innerHTML = heroes.map(h=>`
-    <div class="counter-card" onclick="showCounterDetail('${h.name}')">
-      <div style="display:flex;align-items:center;gap:12px">
-        <div class="hero-avatar" style="width:40px;height:40px;font-size:16px;border-radius:10px;background:${getAvatarColor(h.name)}">${h.name[0]}</div>
-        <div>
-          <div style="font-size:16px;font-weight:600">${h.name}</div>
-          <div style="font-size:11px;color:#888">${h.role} · ${h.desc}</div>
-        </div>
-      </div>
-    </div>
-  `).join('')
-}
-function filterCounterHeroes(){
-  const v = document.getElementById('counterSearch').value
-  renderCounterHeroes(v)
-  document.getElementById('counterResult').innerHTML = ''
-}
-function showCounterDetail(name){
-  const hero = ALL_HEROES.find(h=>h.name===name)
-  if(!hero)return
-  document.getElementById('counterResult').innerHTML = `
-    <div class="counter-result">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-        <div class="hero-avatar" style="width:48px;height:48px;font-size:20px;border-radius:12px;background:${getAvatarColor(hero.name)}">${hero.name[0]}</div>
-        <div><div style="font-size:18px;font-weight:600">${hero.name}</div><div style="font-size:12px;color:#888">${ROLES[hero.role].icon} ${hero.role}</div></div>
-      </div>
-      <div class="section-title" style="margin-top:0"><i class="fa fa-shopping-cart"></i> 推荐出装</div>
-      <div style="font-size:14px;color:#ccc;margin-bottom:8px">${hero.equip.join(' → ')}</div>
-      <div class="section-title"><i class="fa fa-pencil"></i> 铭文</div>
-      <div style="font-size:16px;color:#D4A843;font-weight:600;margin-bottom:10px">${hero.runes}</div>
-      <div class="section-title"><i class="fa fa-lightbulb-o"></i> 对线/应对技巧</div>
-      ${hero.tips.map(t=>`<div class="tip-box">${t}</div>`).join('')}
-    </div>
-  `
-}
-
-// ======== TEAM CHECK ========
-const SLOT_LABELS = ['对抗路','打野','中路','发育路','游走']
-function renderTeamSlots(){
-  const container = document.getElementById('teamSlots')
-  container.innerHTML = currentTeam.map((hero,i)=>`
-    <div class="team-slot ${hero?'filled':''}" onclick="openTeamPicker(${i})">
-      ${hero?`
-        <div>
-          <div style="display:flex;align-items:center;gap:10px">
-            <div class="hero-avatar" style="width:44px;height:44px;font-size:18px;border-radius:11px;background:${getAvatarColor(hero.name)}">${hero.name[0]}</div>
-            <div style="text-align:left">
-              <div style="font-size:16px;font-weight:600">${hero.name}</div>
-              <div class="role-tag">${ROLES[hero.role].icon} ${hero.role}</div>
-            </div>
-          </div>
-        </div>
-      `:`
-        <div style="color:#555;font-size:15px"><i class="fa fa-plus-circle" style="color:#D4A843;margin-right:6px"></i>点击选择 ${SLOT_LABELS[i]}</div>
-      `}
-    </div>
-  `).join('')
-}
-function openTeamPicker(index){
-  modalSlotIndex = index
-  modalCallback = selectTeamHero
-  document.getElementById('modalTitle').textContent = `选择 ${SLOT_LABELS[index]} 英雄`
-  document.getElementById('modalSearch').value = ''
-  renderModalHeroes()
-  document.getElementById('modalOverlay').classList.add('show')
-}
-function renderModalHeroes(filter=''){
-  const grid = document.getElementById('modalHeroGrid')
-  const heroes = filter ? ALL_HEROES.filter(h=>h.name.includes(filter)) : ALL_HEROES
-  grid.innerHTML = heroes.map(h=>{
-    const sel = currentTeam[modalSlotIndex]?.name===h.name?' selected':''
-    return `<div class="hero-grid-item${sel}" onclick="selectTeamHero('${h.name}','${h.role}')">
-      <div class="grid-avatar" style="background:${getAvatarColor(h.name)}">${h.name[0]}</div>
-      <div>${h.name}</div>
-    </div>`
-  }).join('')
-}
-function filterModalHeroes(){
-  renderModalHeroes(document.getElementById('modalSearch').value)
-}
-function selectTeamHero(name,role){
-  const hero = ALL_HEROES.find(h=>h.name===name&&h.role===role)
-  currentTeam[modalSlotIndex] = hero
-  document.getElementById('modalOverlay').classList.remove('show')
-  renderTeamSlots()
-  document.getElementById('teamResult').innerHTML = ''
-}
-function closeModal(e){
-  if(e.target===document.getElementById('modalOverlay')){
-    document.getElementById('modalOverlay').classList.remove('show')
-  }
-}
-function checkTeam(){
-  const result = document.getElementById('teamResult')
-  const filled = currentTeam.filter(h=>h!==null)
-  if(filled.length<5){
-    result.innerHTML = `<div class="analysis-card warn"><div class="analysis-item"><span style="font-size:20px">⚠️</span><span>还差 ${5-filled.length} 个位置没选</span></div></div>`
-    return
-  }
-
-  const roles = currentTeam.map(h=>h.role)
-  const hasTank = ['对抗路','游走'].some(r=>{
-    const h = currentTeam[SLOT_LABELS.indexOf(r)]
-    return h && ['亚瑟','夏侯惇','程咬金','白起','牛魔','张飞','庄周','吕布','铠'].includes(h.name)
-  })
-  const hasMage = currentTeam.some(h=>h.role==='中路')
-  const hasADC = currentTeam.some(h=>h.role==='发育路')
-  const hasJungle = currentTeam.some(h=>h.role==='打野')
-  const hasControl = currentTeam.some(h=>{
-    const ctrlHeroes = ['甄姬','王昭君','牛魔','白起','夏侯惇','刘禅','墨子','东皇太一','张良','廉颇','项羽','鬼谷子','孙膑','弈星','金蝉','大乔']
-    return ctrlHeroes.includes(h.name)
-  })
-
-  let issues = []
-  if(!hasTank) issues.push('⚠️ 没人抗伤害，建议对抗路或辅助选个坦克')
-  if(!hasMage) issues.push('⚠️ 没有法师，全物理伤害容易被针对')
-  if(!hasADC) issues.push('⚠️ 没有射手，推塔会比较慢')
-  if(!hasJungle) issues.push('💡 没有打野，野区资源浪费了')
-  if(!hasControl) issues.push('💡 控制有点少，团战可能留不住人')
-
-  const isGood = issues.length<=1
-  result.innerHTML = `
-    <div class="analysis-card ${isGood?'':'warn'}">
-      <div style="font-size:16px;font-weight:600;margin-bottom:10px">${isGood?'✅ 阵容不错！':'🔧 阵容建议调整：'}</div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
-        ${currentTeam.map(h=>`<span style="background:rgba(212,168,67,.1);border-radius:8px;padding:4px 10px;font-size:13px">${ROLES[h.role].icon} ${h.name}</span>`).join('')}
-      </div>
-      ${issues.map(issue=>`<div class="analysis-item" style="color:${issue.startsWith('⚠️')?'#F44336':'#FFC107'}">${issue}</div>`).join('')}
-    </div>
-  `
 }
 
 // ======== PAGE NAVIGATION ========
