@@ -592,6 +592,11 @@ function showCounterDetail(name, role){
       </details>
     </div>
   `
+  // 自动滚动到克制详情
+  setTimeout(() => {
+    const el = document.getElementById('counterResult')
+    if(el) el.scrollIntoView({behavior:'smooth', block:'start'})
+  }, 50)
 }
 
 // ======== AVATAR COLORS ========
