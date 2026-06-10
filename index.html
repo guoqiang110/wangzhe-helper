@@ -15,7 +15,13 @@
 <style>
 *{-webkit-tap-highlight-color:transparent;box-sizing:border-box}
 html,body{margin:0;padding:0;background:#0D0D1A;color:#F5F0E8;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",sans-serif;overflow:hidden;height:100%;width:100%;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;overscroll-behavior:none}
-#app{height:100dvh;display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:relative;overflow:hidden}
+/* Desktop layout */
+body{display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,#121225,#0A0A14)}
+#app{height:100dvh;display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:relative;overflow:hidden;box-shadow:0 0 60px rgba(212,168,67,.08)}
+@media(min-width:768px){
+  body{padding:20px}
+  #app{height:calc(100dvh - 40px);border-radius:24px;border:1px solid rgba(212,168,67,.12);max-width:520px}
+}
 /* Scrollable content area */
 .page-area{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:16px 16px 8px;scroll-behavior:smooth}
 .page-area::-webkit-scrollbar{width:0;height:0}
@@ -528,7 +534,7 @@ function renderCounterHeroes(filter=''){
   const list = document.getElementById('counterHeroList')
   const heroes = filter ? ALL_HEROES.filter(h=>h.name.includes(filter)) : ALL_HEROES
   list.innerHTML = heroes.map(h=>`
-    <div class="counter-card" onclick="showCounterDetail('${h.name}','${h.role}')">
+    <div class="counter-card" data-name="${h.name.replace(/'/g,'')}" data-role="${h.role}">
       <div style="display:flex;align-items:center;gap:12px">
         <div class="hero-avatar" style="width:40px;height:40px;font-size:16px;border-radius:10px;background:${getAvatarColor(h.name)}">${h.name[0]}</div>
         <div>
@@ -559,17 +565,17 @@ function showCounterDetail(name, role){
 
       <div style="background:rgba(244,67,54,.1);border-radius:12px;padding:14px;margin-bottom:12px;border-left:3px solid #F44336">
         <div style="font-size:14px;font-weight:600;color:#F44336;margin-bottom:8px"><i class="fa fa-shield"></i> 克制 ${hero.name} 的英雄</div>
-        ${counters.length>0?`<div style="display:flex;flex-wrap:wrap;gap:6px">${counters.map(c=>{
+        ${counters.length>0?`<div style="display:flex;flex-wrap:wrap;gap:6px" class="counter-tags">${counters.map(c=>{
           const ch = ALL_HEROES.find(h=>h.name===c)
-          return `<span style="background:rgba(244,67,54,.08);border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer" onclick="showCounterDetail('${c}','${ch?ch.role:''}')">${ch?ROLES[ch.role].icon:''} ${c}</span>`
+          return `<span class="counter-tag" data-name="${c}" data-role="${ch?ch.role:''}" style="background:rgba(244,67,54,.08);border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer">${ch?ROLES[ch.role].icon:''} ${c}</span>`
         }).join('')}</div>`:'<div style="font-size:13px;color:#888">暂无记录（遇到刺客和爆发英雄要小心）</div>'}
       </div>
 
       <div style="background:rgba(76,175,80,.1);border-radius:12px;padding:14px;margin-bottom:12px;border-left:3px solid #4CAF50">
         <div style="font-size:14px;font-weight:600;color:#4CAF50;margin-bottom:8px"><i class="fa fa-crosshairs"></i> ${hero.name} 克制的英雄</div>
-        ${counteredBy.length>0?`<div style="display:flex;flex-wrap:wrap;gap:6px">${counteredBy.map(c=>{
+        ${counteredBy.length>0?`<div style="display:flex;flex-wrap:wrap;gap:6px" class="counter-tags">${counteredBy.map(c=>{
           const ch = ALL_HEROES.find(h=>h.name===c)
-          return `<span style="background:rgba(76,175,80,.08);border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer" onclick="showCounterDetail('${c}','${ch?ch.role:''}')">${ch?ROLES[ch.role].icon:''} ${c}</span>`
+          return `<span class="counter-tag" data-name="${c}" data-role="${ch?ch.role:''}" style="background:rgba(76,175,80,.08);border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer">${ch?ROLES[ch.role].icon:''} ${c}</span>`
         }).join('')}</div>`:'<div style="font-size:13px;color:#888">暂无记录</div>'}
       </div>
 
@@ -675,6 +681,24 @@ function showPage(page){
 renderHome()
 renderCounterHeroes()
 renderTeamSlots()
+
+// Global click delegation for counter page
+document.getElementById('page-counter').addEventListener('click', function(e){
+  // Hero list cards
+  const card = e.target.closest('.counter-card')
+  if(card && card.dataset.name){
+    showCounterDetail(card.dataset.name, card.dataset.role)
+    e.preventDefault()
+    return
+  }
+  // Counter tags inside results
+  const tag = e.target.closest('.counter-tag')
+  if(tag && tag.dataset.name){
+    showCounterDetail(tag.dataset.name, tag.dataset.role)
+    e.preventDefault()
+    return
+  }
+})
 
 // Fix for iOS safe areas
 if(window.navigator.userAgent.includes('iPhone')||window.navigator.userAgent.includes('iPad')){
