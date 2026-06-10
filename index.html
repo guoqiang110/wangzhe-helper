@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0D0D1A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="王者助手">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23D4A843'/%3E%3Ctext x='50' y='68' text-anchor='middle' font-size='50' fill='%230D0D1A' font-weight='bold' font-family='serif'%3E王%3C/text%3E%3C/svg%3E">
+<title>王者荣耀助手</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+<style>
+*{-webkit-tap-highlight-color:transparent;box-sizing:border-box}
+html,body{margin:0;padding:0;background:#0D0D1A;color:#F5F0E8;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",sans-serif;overflow:hidden;height:100%;width:100%;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;overscroll-behavior:none}
+#app{height:100dvh;display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:relative;overflow:hidden}
+/* Scrollable content area */
+.page-area{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:16px 16px 8px;scroll-behavior:smooth}
+.page-area::-webkit-scrollbar{width:0;height:0}
+/* Bottom tab bar */
+.tab-bar{background:#141428;border-top:1px solid rgba(212,168,67,.15);display:flex;padding:4px 0 env(safe-area-inset-bottom,4px);flex-shrink:0;position:sticky;bottom:0;z-index:50}
+.tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 0;font-size:10px;color:#666;border:none;background:none;cursor:pointer;transition:color .2s;gap:1px;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-btn .fa{font-size:22px;margin-bottom:1px}
+.tab-btn.active{color:#D4A843}
+.tab-btn.active .fa{text-shadow:0 0 12px rgba(212,168,67,.4)}
+/* Pages */
+.page{display:none;height:100%;flex-direction:column;animation:fadeIn .25s ease}
+.page.active{display:flex}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes popIn{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+/* Card designs */
+.role-card{background:linear-gradient(135deg,#1A1A2E,#232340);border-radius:16px;padding:20px 16px;cursor:pointer;transition:all .25s;border:1px solid rgba(212,168,67,.1);position:relative;overflow:hidden}
+.role-card:active{transform:scale(.96);border-color:rgba(212,168,67,.3)}
+.role-card .glow{position:absolute;top:-50%;right:-50%;width:100%;height:100%;background:radial-gradient(circle,rgba(212,168,67,.06) 0%,transparent 70%);pointer-events:none}
+.role-icon{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:bold;margin-bottom:10px}
+.hero-badge{display:inline-block;padding:4px 10px;border-radius:20px;font-size:12px;margin:2px;background:rgba(255,255,255,.08)}
+/* Hero card */
+.hero-card{background:linear-gradient(135deg,#1A1A2E,#1E1E36);border-radius:14px;padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .2s;border:1px solid rgba(212,168,67,.08)}
+.hero-card:active{transform:scale(.97);border-color:rgba(212,168,67,.25)}
+.hero-avatar{width:52px;height:52px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:bold;flex-shrink:0}
+.stars{color:#D4A843;font-size:11px;letter-spacing:1px}
+/* Hero detail */
+.detail-header{background:linear-gradient(135deg,#1A1A2E,#252545);border-radius:16px;padding:20px;margin-bottom:12px;text-align:center;border:1px solid rgba(212,168,67,.15)}
+.detail-avatar{width:72px;height:72px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:bold;margin:0 auto 10px}
+.section-title{font-size:15px;font-weight:600;color:#D4A843;margin:16px 0 10px;display:flex;align-items:center;gap:8px}
+.section-title .fa{font-size:14px}
+.item-slot{background:#1A1A2E;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:6px;border:1px solid rgba(212,168,67,.08)}
+.item-slot .item-num{width:22px;height:22px;border-radius:6px;background:rgba(212,168,67,.15);color:#D4A843;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;flex-shrink:0}
+.item-slot .item-name{font-size:15px;font-weight:500}
+.item-slot .item-badge{font-size:10px;background:rgba(212,168,67,.12);color:#D4A843;padding:2px 8px;border-radius:10px;margin-left:auto;white-space:nowrap}
+.rune-box{background:#1A1A2E;border-radius:12px;padding:14px;text-align:center;margin-bottom:6px;border:1px solid rgba(212,168,67,.08)}
+.rune-box .rune-text{font-size:17px;font-weight:600;color:#D4A843;letter-spacing:1px}
+.tip-box{background:linear-gradient(135deg,#1A1A2E,#1E1E36);border-radius:12px;padding:14px;margin-bottom:8px;border-left:3px solid #D4A843;font-size:14px;line-height:1.6}
+/* Team check */
+.team-slot{background:#1A1A2E;border-radius:14px;padding:16px;cursor:pointer;transition:all .2s;border:1px dashed rgba(212,168,67,.15);text-align:center;min-height:64px;display:flex;align-items:center;justify-content:center}
+.team-slot.filled{border-style:solid;border-color:rgba(212,168,67,.25)}
+.team-slot:active{transform:scale(.97)}
+.team-slot .role-tag{font-size:11px;background:rgba(212,168,67,.12);color:#D4A843;padding:2px 8px;border-radius:8px;margin-top:4px}
+.analysis-card{background:linear-gradient(135deg,#1A2E1A,#1A1A2E);border-radius:14px;padding:16px;margin-top:10px;border:1px solid rgba(76,175,80,.3)}
+.analysis-card.warn{background:linear-gradient(135deg,#2E1A1A,#1A1A2E);border-color:rgba(244,67,54,.3)}
+.analysis-item{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:14px}
+/* Counter page */
+.counter-card{background:linear-gradient(135deg,#1A1A2E,#1E1E36);border-radius:14px;padding:16px;margin-bottom:10px;cursor:pointer;transition:all .2s;border:1px solid rgba(212,168,67,.08)}
+.counter-card:active{transform:scale(.97)}
+.counter-result{background:#1A1A2E;border-radius:14px;padding:16px;margin-top:12px;border:1px solid rgba(212,168,67,.15);animation:popIn .3s ease}
+/* Buttons */
+.btn-primary{background:linear-gradient(135deg,#D4A843,#C49430);color:#0D0D1A;font-weight:700;border:none;border-radius:12px;padding:14px 24px;font-size:16px;cursor:pointer;transition:all .2s;width:100%;text-align:center}
+.btn-primary:active{transform:scale(.97);opacity:.9}
+.btn-secondary{background:rgba(212,168,67,.12);color:#D4A843;border:1px solid rgba(212,168,67,.25);border-radius:10px;padding:8px 16px;font-size:14px;cursor:pointer;transition:all .2s}
+.btn-secondary:active{background:rgba(212,168,67,.2)}
+/* Back button */
+.back-btn{background:none;border:none;color:#D4A843;font-size:16px;padding:8px 0;cursor:pointer;display:flex;align-items:center;gap:6px;margin-bottom:8px}
+/* Hero grid for team picker */
+.hero-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-height:280px;overflow-y:auto;padding:4px 0}
+.hero-grid-item{background:#1A1A2E;border-radius:10px;padding:10px 4px;text-align:center;cursor:pointer;border:1px solid rgba(212,168,67,.08);font-size:12px;transition:all .2s}
+.hero-grid-item:active{transform:scale(.95);background:#232340}
+.hero-grid-item .grid-avatar{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:bold;margin:0 auto 4px}
+.hero-grid-item.selected{border-color:#D4A843;background:rgba(212,168,67,.15)}
+/* Replace info banner */
+.replace-banner{background:rgba(212,168,67,.08);border-radius:10px;padding:10px 14px;font-size:13px;line-height:1.5;margin-top:10px;border-left:3px solid #D4A843}
+/* Scroll top button */
+.scroll-top{position:fixed;bottom:80px;right:16px;width:44px;height:44px;border-radius:22px;background:#D4A843;color:#0D0D1A;border:none;font-size:18px;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:40;transition:all .3s}
+.scroll-top.show{display:flex}
+/* Modal overlay */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:none;align-items:flex-end;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal-content{background:#141428;border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:70vh;padding:20px 16px env(safe-area-inset-bottom,16px);overflow-y:auto;animation:slideUp .3s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-handle{width:40px;height:4px;background:rgba(255,255,255,.15);border-radius:2px;margin:0 auto 16px}
+.modal-title{font-size:18px;font-weight:600;margin-bottom:14px;text-align:center}
+/* Search */
+.search-box{background:#1A1A2E;border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:12px;border:1px solid rgba(212,168,67,.1)}
+.search-box input{background:transparent;border:none;color:#F5F0E8;font-size:15px;flex:1;outline:none}
+.search-box input::placeholder{color:#555}
+/* Tag */
+.tag{display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:500}
+.tag-easy{background:rgba(76,175,80,.15);color:#4CAF50}
+.tag-medium{background:rgba(255,193,7,.15);color:#FFC107}
+.tag-hard{background:rgba(244,67,54,.15);color:#F44336}
+/* Tab content */
+.tab-header{text-align:center;padding:12px 0 4px;flex-shrink:0}
+.tab-header h1{font-size:20px;font-weight:700;color:#D4A843;margin:0}
+.tab-header p{font-size:13px;color:#888;margin:2px 0 0}
+/* Home page hero selector */
+.home-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.home-grid .role-card:nth-child(5){grid-column:1/-1}
+/* Splash screen */
+.splash{position:fixed;inset:0;background:#0D0D1A;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .5s}
+.splash.hidden{opacity:0;pointer-events:none}
+.splash-icon{width:80px;height:80px;border-radius:20px;background:linear-gradient(135deg,#D4A843,#C49430);display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:bold;color:#0D0D1A;margin-bottom:16px;animation:popIn .5s ease}
+.splash h1{font-size:24px;font-weight:700;color:#D4A843;margin:0 0 4px}
+.splash p{font-size:14px;color:#666;margin:0}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- Splash Screen -->
+  <div class="splash" id="splash">
+    <div class="splash-icon">王</div>
+    <h1>王者荣耀助手</h1>
+    <p>选英雄 · 看出装 · 查铭文</p>
+  </div>
+
+  <!-- ======== PAGE: HOME ======== -->
+  <div class="page active" id="page-home">
+    <div class="tab-header">
+      <h1>🏆 王者荣耀助手</h1>
+      <p>点选位置 → 查看英雄攻略</p>
+    </div>
+    <div class="page-area">
+      <div class="home-grid" id="roleGrid"></div>
+      <div class="mt-4 text-center" style="padding:12px 0 60px">
+        <div style="display:flex;gap:10px">
+          <button class="btn-secondary" style="flex:1" onclick="showPage('counter')"><i class="fa fa-shield"></i> 克制查询</button>
+          <button class="btn-secondary" style="flex:1" onclick="showPage('team')"><i class="fa fa-users"></i> 阵容检查</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== PAGE: HERO LIST ======== -->
+  <div class="page" id="page-herolist">
+    <div class="page-area">
+      <button class="back-btn" onclick="showPage('home')"><i class="fa fa-chevron-left"></i> 返回首页</button>
+      <h2 id="heroListTitle" style="font-size:20px;font-weight:600;margin:0 0 12px"></h2>
+      <div id="heroListContent"></div>
+    </div>
+  </div>
+
+  <!-- ======== PAGE: HERO DETAIL ======== -->
+  <div class="page" id="page-herodetail">
+    <div class="page-area">
+      <button class="back-btn" onclick="showPage('herolist')"><i class="fa fa-chevron-left"></i> 返回英雄列表</button>
+      <div id="heroDetailContent"></div>
+    </div>
+  </div>
+
+  <!-- ======== PAGE: COUNTER ======== -->
+  <div class="page" id="page-counter">
+    <div class="tab-header">
+      <h1>⚔️ 克制查询</h1>
+      <p>选一个对面英雄，教你出装针对</p>
+    </div>
+    <div class="page-area">
+      <div class="search-box"><i class="fa fa-search" style="color:#D4A843"></i><input type="text" id="counterSearch" placeholder="搜索英雄名字..." oninput="filterCounterHeroes()"></div>
+      <div id="counterHeroList"></div>
+      <div id="counterResult" style="padding-bottom:60px"></div>
+    </div>
+  </div>
+
+  <!-- ======== PAGE: TEAM ======== -->
+  <div class="page" id="page-team">
+    <div class="tab-header">
+      <h1>✅ 阵容检查</h1>
+      <p>点选 5 个位置，看看阵容缺什么</p>
+    </div>
+    <div class="page-area">
+      <div id="teamSlots" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px"></div>
+      <button class="btn-primary" onclick="checkTeam()"><i class="fa fa-check-circle"></i> 检查阵容</button>
+      <div id="teamResult" style="padding-bottom:60px"></div>
+    </div>
+  </div>
+
+  <!-- ======== TAB BAR ======== -->
+  <div class="tab-bar" id="tabBar">
+    <button class="tab-btn active" data-page="home" onclick="showPage('home')"><i class="fa fa-home"></i><span>首页</span></button>
+    <button class="tab-btn" data-page="counter" onclick="showPage('counter')"><i class="fa fa-shield"></i><span>克制</span></button>
+    <button class="tab-btn" data-page="team" onclick="showPage('team')"><i class="fa fa-users"></i><span>阵容</span></button>
+  </div>
+
+  <!-- ======== MODAL ======== -->
+  <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+    <div class="modal-content" id="modalContent" onclick="event.stopPropagation()">
+      <div class="modal-handle"></div>
+      <div class="modal-title" id="modalTitle">选择英雄</div>
+      <div class="search-box"><i class="fa fa-search" style="color:#D4A843"></i><input type="text" id="modalSearch" placeholder="搜索英雄..." oninput="filterModalHeroes()"></div>
+      <div id="modalHeroGrid"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ======== HERO DATA ========
+const ROLES = {
+  '对抗路': {icon:'🛡️', color:'#E74C3C', bg:'rgba(231,76,60,.12)'},
+  '发育路': {icon:'🏹', color:'#F39C12', bg:'rgba(243,156,18,.12)'},
+  '中路': {icon:'🔮', color:'#9B59B6', bg:'rgba(155,89,182,.12)'},
+  '打野': {icon:'🗡️', color:'#2ECC71', bg:'rgba(46,204,113,.12)'},
+  '游走': {icon:'💊', color:'#3498DB', bg:'rgba(52,152,219,.12)'}
+}
+
+const HEROES = {
+  '对抗路': [
+    {name:'亚瑟',diff:1,desc:'沉默回血，肉又有输出',equip:['冷静之靴','暗影战斧','冰痕之握','反伤刺甲','永夜守护','暴烈之甲'],core:'暗影战斧',runes:'10隐匿 10鹰眼 10异变',tips:['一技能沉默可以打断很多英雄的大招','二技能转圈清兵打架都很好用','大招是击飞，团战砸后排','半肉出装，能抗能打，别怂也别无脑冲'],replace:'法师强换永夜→魔女斗篷'},
+    {name:'铠',diff:3,desc:'开大后伤害爆炸，能抗能打',equip:['抵抗之靴','暗影战斧','极寒风暴','宗师之力','无尽战刃','暴烈之甲'],core:'暗影战斧+宗师之力',runes:'10隐匿 10鹰眼 10异变',tips:['没大招的时候不要硬拼','开大后直接冲对面后排','一技能可以回血和减速','半肉出装，又肉又有输出'],replace:'对面肉多→暗影战斧后出碎星锤'},
+    {name:'吕布',diff:3,desc:'真伤克坦克，后期翻盘王',equip:['抵抗之靴','破军','极寒风暴','纯净苍穹','暴烈之甲','永夜守护'],core:'破军',runes:'10狩猎 10虚空 10红月',tips:['一技能附魔（刮到人）后伤害才高','大招别随便跳，等团战打起来再跳','附魔后的普攻是真伤，打坦克特别疼','后期经济起来了无敌'],replace:'顺风→纯净苍穹换无尽战刃'},
+    {name:'夏侯惇',diff:2,desc:'有盾有控有回血，全面均衡',equip:['抵抗之靴','红莲斗篷','极寒风暴','永夜守护','不祥征兆','霸者重装'],core:'红莲斗篷',runes:'10调和 10虚空 10宿命',tips:['血量低于一半时普攻会回血','一技能命中后可以触发第二段击飞','大招是位移+晕人，可以逃跑也能开团','非常全面，很难死'],replace:'对面法师强→红莲后直接出永夜'},
+    {name:'程咬金',diff:2,desc:'血越少伤害越高，大招回血',equip:['抵抗之靴','红莲斗篷','不死鸟之眼','极寒风暴','暗影战斧','血魔之怒'],core:'不死鸟之眼',runes:'10调和 10虚空 10宿命',tips:['血量越低攻击力越高','大招回血很猛，残血别慌','带线推塔，对面来抓就开大跑','对面出制裁/梦魇时小心点'],replace:'对面出制裁→不死鸟后出霸者重装'},
+    {name:'白起',diff:2,desc:'大招嘲讽，团战搅屎棍',equip:['抵抗之靴','红莲斗篷','不死鸟之眼','极寒风暴','霸者重装','暴烈之甲'],core:'红莲斗篷',runes:'10调和 10虚空 10宿命',tips:['大招嘲讽是神技，团战跳后排','被动回血很猛','红莲斗篷+大招是核心连招','嘲讽时间跟额外血量有关'],replace:'法师多→不死鸟之眼后出魔女斗篷'},
+  ],
+  '发育路': [
+    {name:'后羿',diff:1,desc:'站桩射，后期输出爆炸',equip:['急速战靴','无尽战刃','影刃','泣血之刃','破晓','逐日之弓'],core:'无尽战刃',runes:'10夺萃 10鹰眼 10祸源',tips:['出门先买吸血之镰','前期安心发育，别打架','团战站后排一直射就行','对面刺客多就把逐日之弓换纯净苍穹'],replace:'刺客多→逐日之弓换纯净苍穹'},
+    {name:'鲁班七号',diff:1,desc:'被动扫射百分比伤害',equip:['急速战靴','无尽战刃','影刃','泣血之刃','破晓','破军'],core:'无尽战刃',runes:'10夺萃 10鹰眼 10祸源',tips:['连续普攻4次或放技能后触发扫射','扫射是百分比伤害，打坦克也疼','注意走位，鲁班没有位移','前期猥琐，后期无敌'],replace:'生存压力大→破军换纯净苍穹'},
+    {name:'狄仁杰',diff:2,desc:'自带解控，走A流畅',equip:['急速战靴','末世','无尽战刃','逐日之弓','破晓','贤者的庇护'],core:'末世',runes:'10狩猎 10鹰眼 10红月',tips:['二技能可以解控制，被控了按一下','被动加攻速移速，走A很流畅','大招可以减对面双抗','比后羿灵活，自保能力强'],replace:'大后期→鞋换复活甲'},
+    {name:'伽罗',diff:3,desc:'手超长，后期无敌',equip:['急速战靴','无尽战刃','影刃','泣血之刃','破晓','逐日之弓'],core:'无尽战刃',runes:'10夺萃 10鹰眼 10祸源',tips:['开启长弓模式射程超级远','前期非常弱，一定猥琐','后期团战站最后面射就行','非常需要辅助保护'],replace:'刺客多→逐日之弓换纯净苍穹'},
+    {name:'孙尚香',diff:3,desc:'一技能翻滚爆发高',equip:['急速战靴','无尽战刃','宗师之力','破晓','泣血之刃','逐日之弓'],core:'无尽战刃+宗师之力',runes:'10夺萃 10鹰眼 10祸源',tips:['一技能翻滚后普攻伤害很高','二技能命中后增加穿透','翻滚后附近有敌人会加速','前期不太强，后期一炮一个'],replace:'生存压力大→逐日之弓换复活甲'},
+    {name:'黄忠',diff:2,desc:'架炮守塔推塔强',equip:['急速战靴','无尽战刃','影刃','泣血之刃','破晓','纯净苍穹'],core:'无尽战刃',runes:'10夺萃 10鹰眼 10祸源',tips:['大招架炮不能动，但射程很远','架炮时加双抗，没那么容易死','需要队友保护','推进和守塔都很强'],replace:'大后期→鞋换复活甲'},
+  ],
+  '中路': [
+    {name:'小乔',diff:2,desc:'扇子远程消耗，大招AOE',equip:['冷静之靴','回响之杖','博学者之怒','噬神之书','虚无法杖','辉月'],core:'回响之杖',runes:'10轮回 10献祭 10梦魇',tips:['一技能扇子丢出去会回来，清兵打人两用','二技能吹起来接大招一套','躲在队友后面输出','辉月关键时刻按一下保命'],replace:'对面刺客强→辉月早点出'},
+    {name:'安琪拉',diff:2,desc:'一套技能秒坦克',equip:['冷静之靴','回响之杖','博学者之怒','噬神之书','虚无法杖','贤者之书'],core:'回响之杖+博学者之怒',runes:'10轮回 10献祭 10梦魇',tips:['二技能晕住才能打满伤害','大招不能移动，放之前看好位置','清兵线最快的法师之一','蹲草里阴人特别好用'],replace:'生存压力→贤者之书换辉月'},
+    {name:'妲己',diff:1,desc:'二技能必中晕，一套秒',equip:['冷静之靴','回响之杖','博学者之怒','噬神之书','虚无法杖','辉月'],core:'回响之杖',runes:'10轮回 10献祭 10梦魇',tips:['连招很简单：2晕→3大→1','二技能是锁定技能，必中','一套打完赶紧跑，等技能冷却','草丛蹲人最好用'],replace:'对面控制多→鞋换抵抗之靴'},
+    {name:'王昭君',diff:3,desc:'控制足，守塔清线强',equip:['冷静之靴','回响之杖','博学者之怒','极寒风暴','虚无法杖','辉月'],core:'回响之杖',runes:'10轮回 10献祭 10梦魇',tips:['一技能减速，二技能冰冻','冻住后接大招伤害爆炸','大招封路清兵都很好用','可以出点肉装（极寒风暴）'],replace:'顺风→极寒风暴换噬神之书'},
+    {name:'甄姬',diff:3,desc:'弹弹乐控制，团战利器',equip:['冷静之靴','回响之杖','博学者之怒','极寒风暴','虚无法杖','辉月'],core:'回响之杖',runes:'10轮回 10献祭 10梦魇',tips:['二技能会在敌人之间弹来弹去','团战人堆里放二技能效果最好','大招是范围持续伤害','控制很足，但没位移'],replace:'对面刺客多→早点出辉月'},
+  ],
+  '打野': [
+    {name:'典韦',diff:2,desc:'真伤，后期站撸一切',equip:['贪婪之噬','抵抗之靴','暗影战斧','反伤刺甲','宗师之力','无尽战刃'],core:'暗影战斧+反伤刺甲',runes:'10隐匿 10鹰眼 10异变',tips:['助攻和击杀永久加攻击力（被动）','多参团叠被动，叠起来无敌','大招真伤打坦克也疼','后期站撸不怕任何人'],replace:'大后期→鞋换复活甲'},
+    {name:'赵云',diff:3,desc:'被动免伤，能抗能打',equip:['贪婪之噬','抵抗之靴','暗影战斧','冰痕之握','破军','暴烈之甲'],core:'暗影战斧+冰痕之握',runes:'10隐匿 10鹰眼 10异变',tips:['血量越低免伤越高','大招砸中人才接技能','一技能可以穿墙逃跑','打野节奏型英雄，多抓人'],replace:'对面法师强→暴烈之甲换永夜守护'},
+    {name:'铠（打野）',diff:3,desc:'开大秒脆皮，简单粗暴',equip:['贪婪之噬','抵抗之靴','暗影战斧','宗师之力','无尽战刃','暴烈之甲'],core:'暗影战斧+宗师之力',runes:'10隐匿 10鹰眼 10异变',tips:['没大招不打架，有大招直接上','开大后追着对面脆皮砍','一技能回血，续航不错','打野优先发育，4级了再去抓'],replace:'对面控制多→鞋换抵抗之靴'},
+    {name:'娜可露露',diff:3,desc:'一套秒人，简单爆发高',equip:['贪婪之噬','抵抗之靴','暗影战斧','破军','碎星锤','宗师之力'],core:'暗影战斧+破军',runes:'10隐匿 10鹰眼 10异变',tips:['连招：大招飞起来→砸下去→一技能→普攻','一套技能打完就跑，别恋战','优先抓射手和法师','经济压制很重要'],replace:'对面肉多→碎星锤早点出'},
+    {name:'刘备',diff:2,desc:'贴脸伤害爆炸',equip:['贪婪之噬','急速战靴','暗影战斧','宗师之力','泣血之刃','破军'],core:'暗影战斧',runes:'10夺萃 10鹰眼 10异变',tips:['贴脸打伤害最高，远距离伤害很低','大招有护盾，开了大招直接上','可以打野也可以走对抗路','打龙特别快'],replace:'对面控制多→鞋换抵抗之靴'},
+  ],
+  '游走': [
+    {name:'蔡文姬',diff:1,desc:'加血+弹弹晕，最简单辅助',equip:['近卫荣耀','冷静之靴','圣杯','博学者之怒','时之预言','极寒风暴'],core:'圣杯',runes:'10调和 10虚空 10宿命',tips:['跟着射手走，队友掉血就加血','二技能可以在敌人之间弹来弹去','圣杯出了之后就不用回城了','团战站后排加血就行'],replace:'对面出制裁→多走位别被集火'},
+    {name:'瑶',diff:1,desc:'附身队友自动打',equip:['极影','冷静之靴','霸者重装','极寒风暴','永夜守护','救赎之翼'],core:'霸者重装',runes:'10调和 10虚空 10宿命',tips:['附身到最厉害的队友头上','盾快没了自己跳下来刷盾','一技能可以探草丛视野','大招可以救被控制的队友'],replace:'顺风→出件法装加法强'},
+    {name:'庄周',diff:2,desc:'解控保人，基本不用瞄准',equip:['极影','冷静之靴','红莲斗篷','极寒风暴','永夜守护','霸者重装'],core:'极寒风暴',runes:'10调和 10虚空 10宿命',tips:['看到队友被控了开大招解掉','二技能好了就按，加速又加伤害','被动每6秒自动解控一次','对面控制多的时候选庄周特别香'],replace:'物理多→永夜换不祥征兆'},
+    {name:'牛魔',diff:2,desc:'被动加双抗，大范围击飞',equip:['近卫荣耀','抵抗之靴','不祥征兆','永夜守护','极寒风暴','霸者重装'],core:'近卫荣耀',runes:'10调和 10虚空 10宿命',tips:['被动会给附近血量最低的队友加双抗','二技能顶飞敌人','大招击飞范围很大','站在射手前面挡伤害'],replace:'法师多→早点出永夜守护'},
+    {name:'张飞',diff:3,desc:'保人+开团，大招吼晕',equip:['近卫荣耀','抵抗之靴','不祥征兆','永夜守护','极寒风暴','血魔之怒'],core:'近卫荣耀',runes:'10调和 10虚空 10宿命',tips:['大招可以吼晕敌人并加护盾','没大招时多保护射手','二技能给队友加盾','大招好了就去开团'],replace:'大后期→鞋换复活甲'},
+  ],
+}
+
+// Flatten hero list for search
+const ALL_HEROES = Object.entries(HEROES).flatMap(([role,list]) => list.map(h=>({...h,role})))
+
+// ======== APP STATE ========
+let currentTeam = [null,null,null,null,null]
+let modalCallback = null
+let modalSlotIndex = -1
+
+// ======== AVATAR COLORS ========
+const AVATAR_COLORS = ['#E74C3C','#F39C12','#2ECC71','#3498DB','#9B59B6','#1ABC9C','#E91E63','#FF5722','#4CAF50','#00BCD4']
+function getAvatarColor(name){let h=0;for(let c of name)h=(h*31+c.charCodeAt(0))%AVATAR_COLORS.length;return AVATAR_COLORS[h]}
+
+// ======== SPLASH ========
+setTimeout(()=>document.getElementById('splash').classList.add('hidden'),600)
+
+// ======== RENDER HOME ========
+function renderHome(){
+  const grid = document.getElementById('roleGrid')
+  grid.innerHTML = Object.entries(ROLES).map(([role,cfg])=>`
+    <div class="role-card" onclick="showHeroList('${role}')">
+      <div class="glow"></div>
+      <div class="role-icon" style="background:${cfg.bg}">${cfg.icon}</div>
+      <div style="font-size:18px;font-weight:600;margin-bottom:4px">${role}</div>
+      <div style="font-size:12px;color:#888;line-height:1.5">
+        ${HEROES[role].slice(0,3).map(h=>`<span class="hero-badge">${h.name}</span>`).join('')}
+      </div>
+      <div style="font-size:11px;color:#666;margin-top:6px">点击查看全部 ${HEROES[role].length} 个英雄</div>
+    </div>
+  `).join('')
+}
+
+// ======== SHOW HERO LIST ========
+function showHeroList(role){
+  document.getElementById('heroListTitle').textContent = ROLES[role].icon+' '+role+'英雄'
+  document.getElementById('heroListContent').innerHTML = HEROES[role].map(h=>{
+    const stars = '★'.repeat(h.diff)+'☆'.repeat(5-h.diff)
+    const diffTag = h.diff<=2?'tag-easy':h.diff<=3?'tag-medium':'tag-hard'
+    const diffText = h.diff<=2?'简单':h.diff<=3?'中等':'较难'
+    return `<div class="hero-card" onclick="showHeroDetail('${role}','${h.name}')">
+      <div class="hero-avatar" style="background:${getAvatarColor(h.name)}">${h.name[0]}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:16px;font-weight:600;margin-bottom:2px">${h.name}</div>
+        <div class="stars">${stars}</div>
+        <div style="font-size:13px;color:#999;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h.desc}</div>
+      </div>
+      <span class="tag ${diffTag}" style="flex-shrink:0">${diffText}</span>
+    </div>`
+  }).join('')
+  showPage('herolist')
+}
+
+// ======== SHOW HERO DETAIL ========
+function showHeroDetail(role,name){
+  const hero = HEROES[role].find(h=>h.name===name)
+  if(!hero)return
+  const stars = '★'.repeat(hero.diff)+'☆'.repeat(5-hero.diff)
+  document.getElementById('heroDetailContent').innerHTML = `
+    <div class="detail-header">
+      <div class="detail-avatar" style="background:${getAvatarColor(hero.name)}">${hero.name[0]}</div>
+      <div style="font-size:22px;font-weight:700">${hero.name}</div>
+      <div style="font-size:12px;color:#888;margin:2px 0">${ROLES[role].icon} ${role}</div>
+      <div class="stars" style="font-size:13px">${stars}</div>
+      <div style="font-size:14px;color:#aaa;margin-top:6px">${hero.desc}</div>
+    </div>
+
+    <div class="section-title"><i class="fa fa-shopping-cart"></i> 推荐出装（按顺序出）</div>
+    ${hero.equip.map((item,i)=>
+      `<div class="item-slot"><span class="item-num">${i+1}</span><span class="item-name">${item}</span>${i===0||item===hero.core.split('+')[0]||item===hero.core.split('+')[1]?'<span class="item-badge">核心</span>':''}</div>`
+    ).join('')}
+    ${hero.replace?`<div class="replace-banner"><i class="fa fa-refresh" style="color:#D4A843"></i> <strong>替换建议：</strong>${hero.replace}</div>`:''}
+
+    <div class="section-title"><i class="fa fa-pencil"></i> 推荐铭文</div>
+    <div class="rune-box"><div class="rune-text">${hero.runes}</div></div>
+
+    <div class="section-title"><i class="fa fa-lightbulb-o"></i> 玩法技巧</div>
+    ${hero.tips.map(t=>`<div class="tip-box">${t}</div>`).join('')}
+  `
+  showPage('herodetail')
+}
+
+// ======== COUNTER PAGE ========
+function renderCounterHeroes(filter=''){
+  const list = document.getElementById('counterHeroList')
+  const heroes = filter ? ALL_HEROES.filter(h=>h.name.includes(filter)) : ALL_HEROES
+  list.innerHTML = heroes.map(h=>`
+    <div class="counter-card" onclick="showCounterDetail('${h.name}')">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="hero-avatar" style="width:40px;height:40px;font-size:16px;border-radius:10px;background:${getAvatarColor(h.name)}">${h.name[0]}</div>
+        <div>
+          <div style="font-size:16px;font-weight:600">${h.name}</div>
+          <div style="font-size:11px;color:#888">${h.role} · ${h.desc}</div>
+        </div>
+      </div>
+    </div>
+  `).join('')
+}
+function filterCounterHeroes(){
+  const v = document.getElementById('counterSearch').value
+  renderCounterHeroes(v)
+  document.getElementById('counterResult').innerHTML = ''
+}
+function showCounterDetail(name){
+  const hero = ALL_HEROES.find(h=>h.name===name)
+  if(!hero)return
+  document.getElementById('counterResult').innerHTML = `
+    <div class="counter-result">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <div class="hero-avatar" style="width:48px;height:48px;font-size:20px;border-radius:12px;background:${getAvatarColor(hero.name)}">${hero.name[0]}</div>
+        <div><div style="font-size:18px;font-weight:600">${hero.name}</div><div style="font-size:12px;color:#888">${ROLES[hero.role].icon} ${hero.role}</div></div>
+      </div>
+      <div class="section-title" style="margin-top:0"><i class="fa fa-shopping-cart"></i> 推荐出装</div>
+      <div style="font-size:14px;color:#ccc;margin-bottom:8px">${hero.equip.join(' → ')}</div>
+      <div class="section-title"><i class="fa fa-pencil"></i> 铭文</div>
+      <div style="font-size:16px;color:#D4A843;font-weight:600;margin-bottom:10px">${hero.runes}</div>
+      <div class="section-title"><i class="fa fa-lightbulb-o"></i> 对线/应对技巧</div>
+      ${hero.tips.map(t=>`<div class="tip-box">${t}</div>`).join('')}
+    </div>
+  `
+}
+
+// ======== TEAM CHECK ========
+const SLOT_LABELS = ['对抗路','打野','中路','发育路','游走']
+function renderTeamSlots(){
+  const container = document.getElementById('teamSlots')
+  container.innerHTML = currentTeam.map((hero,i)=>`
+    <div class="team-slot ${hero?'filled':''}" onclick="openTeamPicker(${i})">
+      ${hero?`
+        <div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="hero-avatar" style="width:44px;height:44px;font-size:18px;border-radius:11px;background:${getAvatarColor(hero.name)}">${hero.name[0]}</div>
+            <div style="text-align:left">
+              <div style="font-size:16px;font-weight:600">${hero.name}</div>
+              <div class="role-tag">${ROLES[hero.role].icon} ${hero.role}</div>
+            </div>
+          </div>
+        </div>
+      `:`
+        <div style="color:#555;font-size:15px"><i class="fa fa-plus-circle" style="color:#D4A843;margin-right:6px"></i>点击选择 ${SLOT_LABELS[i]}</div>
+      `}
+    </div>
+  `).join('')
+}
+function openTeamPicker(index){
+  modalSlotIndex = index
+  modalCallback = selectTeamHero
+  document.getElementById('modalTitle').textContent = `选择 ${SLOT_LABELS[index]} 英雄`
+  document.getElementById('modalSearch').value = ''
+  renderModalHeroes()
+  document.getElementById('modalOverlay').classList.add('show')
+}
+function renderModalHeroes(filter=''){
+  const grid = document.getElementById('modalHeroGrid')
+  const heroes = filter ? ALL_HEROES.filter(h=>h.name.includes(filter)) : ALL_HEROES
+  grid.innerHTML = heroes.map(h=>{
+    const sel = currentTeam[modalSlotIndex]?.name===h.name?' selected':''
+    return `<div class="hero-grid-item${sel}" onclick="selectTeamHero('${h.name}','${h.role}')">
+      <div class="grid-avatar" style="background:${getAvatarColor(h.name)}">${h.name[0]}</div>
+      <div>${h.name}</div>
+    </div>`
+  }).join('')
+}
+function filterModalHeroes(){
+  renderModalHeroes(document.getElementById('modalSearch').value)
+}
+function selectTeamHero(name,role){
+  const hero = ALL_HEROES.find(h=>h.name===name&&h.role===role)
+  currentTeam[modalSlotIndex] = hero
+  document.getElementById('modalOverlay').classList.remove('show')
+  renderTeamSlots()
+  document.getElementById('teamResult').innerHTML = ''
+}
+function closeModal(e){
+  if(e.target===document.getElementById('modalOverlay')){
+    document.getElementById('modalOverlay').classList.remove('show')
+  }
+}
+function checkTeam(){
+  const result = document.getElementById('teamResult')
+  const filled = currentTeam.filter(h=>h!==null)
+  if(filled.length<5){
+    result.innerHTML = `<div class="analysis-card warn"><div class="analysis-item"><span style="font-size:20px">⚠️</span><span>还差 ${5-filled.length} 个位置没选</span></div></div>`
+    return
+  }
+
+  const roles = currentTeam.map(h=>h.role)
+  const hasTank = ['对抗路','游走'].some(r=>{
+    const h = currentTeam[SLOT_LABELS.indexOf(r)]
+    return h && ['亚瑟','夏侯惇','程咬金','白起','牛魔','张飞','庄周','吕布','铠'].includes(h.name)
+  })
+  const hasMage = currentTeam.some(h=>h.role==='中路')
+  const hasADC = currentTeam.some(h=>h.role==='发育路')
+  const hasJungle = currentTeam.some(h=>h.role==='打野')
+  const hasControl = currentTeam.some(h=>{
+    const ctrlHeroes = ['甄姬','王昭君','牛魔','白起','夏侯惇','刘禅','墨子','东皇太一','张良']
+    return ctrlHeroes.includes(h.name)
+  })
+
+  let issues = []
+  if(!hasTank) issues.push('⚠️ 没人抗伤害，建议对抗路或辅助选个坦克')
+  if(!hasMage) issues.push('⚠️ 没有法师，全物理伤害容易被针对')
+  if(!hasADC) issues.push('⚠️ 没有射手，推塔会比较慢')
+  if(!hasJungle) issues.push('💡 没有打野，野区资源浪费了')
+  if(!hasControl) issues.push('💡 控制有点少，团战可能留不住人')
+
+  const isGood = issues.length<=1
+  result.innerHTML = `
+    <div class="analysis-card ${isGood?'':'warn'}">
+      <div style="font-size:16px;font-weight:600;margin-bottom:10px">${isGood?'✅ 阵容不错！':'🔧 阵容建议调整：'}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+        ${currentTeam.map(h=>`<span style="background:rgba(212,168,67,.1);border-radius:8px;padding:4px 10px;font-size:13px">${ROLES[h.role].icon} ${h.name}</span>`).join('')}
+      </div>
+      ${issues.map(issue=>`<div class="analysis-item" style="color:${issue.startsWith('⚠️')?'#F44336':'#FFC107'}">${issue}</div>`).join('')}
+    </div>
+  `
+}
+
+// ======== PAGE NAVIGATION ========
+const PAGE_ORDER = ['home','herolist','herodetail','counter','team']
+let pageHistory = ['home']
+
+function showPage(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'))
+  document.getElementById('page-'+page).classList.add('active')
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===page))
+  if(PAGE_ORDER.includes(page)) pageHistory.push(page)
+}
+
+// ======== INIT ========
+renderHome()
+renderCounterHeroes()
+renderTeamSlots()
+
+// Fix for iOS safe areas
+if(window.navigator.userAgent.includes('iPhone')||window.navigator.userAgent.includes('iPad')){
+  document.documentElement.style.setProperty('--sat','env(safe-area-inset-top)')
+  document.documentElement.style.setProperty('--sab','env(safe-area-inset-bottom)')
+}
+</script>
+</body>
+</html>
