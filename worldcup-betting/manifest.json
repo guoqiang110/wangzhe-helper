@@ -1,0 +1,29 @@
+{
+  "name": "2026世界杯 · AI投注助手",
+  "short_name": "世界杯助手",
+  "description": "AI智能分析世界杯比赛，提供竞彩投注建议，48支球队、104场比赛全覆盖",
+  "start_url": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0e1a",
+  "theme_color": "#fbbf24",
+  "scope": ".",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230a0e1a'/%3E%3Ccircle cx='50' cy='50' r='38' fill='%2322c55e'/%3E%3Cpath d='M30 50 Q40 35 50 50 Q60 65 70 50' stroke='white' stroke-width='2' fill='none'/%3E%3Cpath d='M50 20 L50 80 M20 50 L80 50' stroke='white' stroke-width='1.5' opacity='0.3'/%3E%3Ctext x='50' y='85' text-anchor='middle' font-size='12' fill='%23fbbf24' font-weight='bold'%3E⚽%3C/text%3E%3C/svg%3E",
+      "sizes": "100x100",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='30' fill='%230a0e1a'/%3E%3Ccircle cx='96' cy='96' r='72' fill='%2322c55e'/%3E%3Cpath d='M60 96 Q80 65 96 96 Q112 127 132 96' stroke='white' stroke-width='4' fill='none'/%3E%3Cpath d='M96 36 L96 156 M36 96 L156 96' stroke='white' stroke-width='2' opacity='0.3'/%3E%3Ctext x='96' y='160' text-anchor='middle' font-size='20' fill='%23fbbf24' font-weight='bold'%3E⚽ 2026%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='60' fill='%230a0e1a'/%3E%3Ccircle cx='256' cy='256' r='200' fill='%2322c55e'/%3E%3Cpath d='M160 256 Q200 160 256 256 Q312 352 352 256' stroke='white' stroke-width='8' fill='none'/%3E%3Cpath d='M256 80 L256 432 M80 256 L432 256' stroke='white' stroke-width='4' opacity='0.3'/%3E%3Ctext x='256' y='420' text-anchor='middle' font-size='48' fill='%23fbbf24' font-weight='bold'%3E⚽ 2026%3C/text%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

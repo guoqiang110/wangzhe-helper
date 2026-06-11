@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="世界杯助手">
+<link rel="manifest" href="manifest.json">
+<title>⚽ 2026世界杯 · AI 投注助手</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  * { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  body { background: #0a0e1a; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #0a0e1a; }
+  ::-webkit-scrollbar-thumb { background: #1e2a4a; border-radius: 3px; }
+  /* Tab content – :target for CSS-only, .active for JS switching */
+  .tab-content { display: none; }
+  .tab-content.active,
+  .tab-content:target { display: block; animation: fadeIn .3s ease; }
+  /* When no hash, show overview via JS default */
+  .tab-btn.active { color: #fbbf24; border-bottom-color: #fbbf24; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes pulse-glow { 0%,100% { box-shadow: 0 0 8px rgba(251,191,36,.15); } 50% { box-shadow: 0 0 20px rgba(251,191,36,.3); } }
+  @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+  .card-glow:hover { animation: pulse-glow 2s infinite; }
+  .shimmer-bg { background: linear-gradient(90deg,#1e2a4a 25%,#2a3a5a 50%,#1e2a4a 75%); background-size: 200% 100%; animation: shimmer 2s infinite; }
+  .odd-cell { transition: all .2s; }
+  .odd-cell:hover { transform: scale(1.05); background: rgba(251,191,36,.1) !important; }
+  .handicap-up { color: #ef4444; }
+  .handicap-down { color: #22c55e; }
+
+  .stat-value { font-size: 1.5rem; font-weight: 800; }
+  .stat-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; opacity: .6; }
+
+  .prob-bar { height: 6px; border-radius: 3px; background: #1e2a4a; overflow: hidden; }
+  .prob-bar-inner { height: 100%; border-radius: 3px; transition: width .6s ease; }
+
+  .team-flag { display: inline-block; width: 24px; height: 16px; border-radius: 2px; vertical-align: middle; margin-right: 4px; object-fit: cover; }
+
+  .nav-btn {
+    touch-action: manipulation;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent !important;
+    position: relative;
+    z-index: 10;
+    user-select: none;
+  }
+
+  .recommend-card { border-left: 3px solid #fbbf24; padding-left: 12px; margin: 8px 0; }
+</style>
+<script>
+tailwind.config={theme:{extend:{colors:{primary:'#fbbf24',dark:'#0a0e1a',card:'#111827',card2:'#1a1f35'}}}};
+</script>
+<script>
+// Tab switching – defined early so it always works, with hashchange + delegation backup
+window.switchTab = function(tabId){
+  if(!tabId) return;
+  document.querySelectorAll('.tab-content').forEach(function(el){el.classList.remove('active');});
+  document.querySelectorAll('.tab-btn').forEach(function(el){el.classList.remove('active');});
+  var target = document.getElementById(tabId);
+  if(target) target.classList.add('active');
+  var btn = document.querySelector('[data-tab="'+tabId+'"]');
+  if(btn) btn.classList.add('active');
+};
+// Hashchange backup – <a href="#tab-id"> clicks change the hash, we switch content
+window.addEventListener('hashchange', function(){
+  var tabId = location.hash.replace('#','');
+  if(tabId) window.switchTab(tabId);
+});
+// Event delegation backup – catches clicks on any nav-btn
+document.addEventListener('DOMContentLoaded', function(){
+  var container = document.getElementById('tabContainer');
+  if(container){
+    container.addEventListener('click', function(e){
+      var btn = e.target.closest('.tab-btn');
+      if(btn) {
+        var tabId = btn.getAttribute('data-tab');
+        if(tabId) window.switchTab(tabId);
+      }
+    });
+  }
+  // Initial tab from hash
+  var initTab = location.hash.replace('#','');
+  if(initTab) window.switchTab(initTab);
+});
+</script>
+</head>
+<body class="text-gray-100 min-h-screen">
+<script>
+// Inline tab switcher – 100% independent, runs before any other script
+(function(){
+  var h=function(id){
+    if(!id)return;
+    var i,c=document.querySelectorAll('.tab-content'),b=document.querySelectorAll('.tab-btn');
+    for(i=0;i<c.length;i++)c[i].classList.remove('active');
+    for(i=0;i<b.length;i++)b[i].classList.remove('active');
+    var t=document.getElementById(id);if(t)t.classList.add('active');
+    var n=document.querySelector('[data-tab="'+id+'"]');if(n)n.classList.add('active');
+  };
+  window.switchTab = h;
+  window.addEventListener('hashchange',function(){var _h=location.hash.replace('#','');_h&&h(_h);});
+  window.addEventListener('DOMContentLoaded',function(){var _h=location.hash.replace('#','');_h&&h(_h);});
+})();
+</script>
+
+<div class="max-w-7xl mx-auto px-2 sm:px-4 py-3 sm:py-6">
+
+<!-- Header -->
+<div class="flex items-center justify-between mb-4 sm:mb-6">
+  <div class="flex items-center gap-2 sm:gap-3">
+    <div class="text-2xl sm:text-4xl">⚽</div>
+    <div>
+      <h1 class="text-lg sm:text-2xl font-bold text-white tracking-tight">2026世界杯 · AI投注助手</h1>
+      <p class="text-[10px] sm:text-xs text-gray-500">数据基于AI分析 · 仅供参考 · 理性投注</p>
+    </div>
+  </div>
+  <div class="text-right">
+    <div class="text-xs text-gray-500">更新于</div>
+    <div class="text-xs sm:text-sm font-semibold text-yellow-400" id="lastUpdate">2026-06-11</div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<nav class="border-b border-yellow-500/10 bg-[#0a0e1a] shadow-lg shadow-black/20" id="mainNav">
+  <div class="flex flex-wrap gap-1 sm:gap-2 py-2" id="tabContainer">
+    <a href="#tab-overview" class="nav-btn tab-btn active px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium text-yellow-400 border-b-2 border-yellow-400 whitespace-nowrap transition-colors" data-tab="tab-overview">📊 总览</a>
+    <a href="#tab-schedule" class="nav-btn tab-btn px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-400 border-b-2 border-transparent whitespace-nowrap hover:text-yellow-300 transition-colors" data-tab="tab-schedule">⚔️ 赛程</a>
+    <a href="#tab-teams" class="nav-btn tab-btn px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-400 border-b-2 border-transparent whitespace-nowrap hover:text-yellow-300 transition-colors" data-tab="tab-teams">🏃 球队</a>
+    <a href="#tab-odds" class="nav-btn tab-btn px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-400 border-b-2 border-transparent whitespace-nowrap hover:text-yellow-300 transition-colors" data-tab="tab-odds">💰 赔率</a>
+    <a href="#tab-ai" class="nav-btn tab-btn px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-400 border-b-2 border-transparent whitespace-nowrap hover:text-yellow-300 transition-colors" data-tab="tab-ai">🤖 助手</a>
+    <a href="#tab-compare" class="nav-btn tab-btn px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-400 border-b-2 border-transparent whitespace-nowrap hover:text-yellow-300 transition-colors" data-tab="tab-compare">📊 对比</a>
+    <a href="#tab-stats" class="nav-btn tab-btn px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-400 border-b-2 border-transparent whitespace-nowrap hover:text-yellow-300 transition-colors" data-tab="tab-stats">📈 统计</a>
+  </div>
+</nav>
+
+<main id="app">
+
+<!-- ════ 总览 ════ -->
+<section id="tab-overview" class="tab-content active py-4 sm:py-6">
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+    <div class="bg-[#111827] rounded-xl p-4 text-center"><div class="stat-value text-yellow-400">48</div><div class="stat-label text-gray-500">参赛球队</div></div>
+    <div class="bg-[#111827] rounded-xl p-4 text-center"><div class="stat-value text-blue-400">104</div><div class="stat-label text-gray-500">比赛场次</div></div>
+    <div class="bg-[#111827] rounded-xl p-4 text-center"><div class="stat-value text-green-400" id="statToday">0</div><div class="stat-label text-gray-500">今日比赛</div></div>
+    <div class="bg-[#111827] rounded-xl p-4 text-center"><div class="stat-value text-purple-400" id="statFinished">0</div><div class="stat-label text-gray-500">已结束</div></div>
+  </div>
+
+  <div class="bg-[#111827] rounded-xl p-4 sm:p-6 mb-6">
+    <h2 class="text-base sm:text-lg font-bold mb-4">🏆 小组赛对阵</h2>
+    <div id="groupGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+  </div>
+
+  <div class="bg-gradient-to-r from-yellow-500/10 to-transparent rounded-xl p-4 sm:p-6 border border-yellow-500/20">
+    <div class="flex items-start gap-3">
+      <span class="text-xl">⚠️</span>
+      <div>
+        <h3 class="font-semibold text-yellow-400 text-sm sm:text-base">理性投注提醒</h3>
+        <p class="text-xs sm:text-sm text-gray-400 mt-1">本工具所有分析结果均由 AI 模型生成，仅供娱乐参考。彩票投注有风险，请量力而行，切勿沉迷。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════ 赛程 ════ -->
+<section id="tab-schedule" class="tab-content py-4 sm:py-6">
+  <div class="bg-[#111827] rounded-xl p-4 sm:p-6">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+      <h2 class="text-base sm:text-lg font-bold">📅 完整赛程</h2>
+      <div class="flex gap-2">
+        <select id="groupFilter" class="bg-[#1a1f35] text-xs sm:text-sm rounded-lg px-3 py-1.5 border border-gray-700/50" onchange="window.renderSchedule()">
+          <option value="all">全部小组</option>
+        </select>
+        <select id="roundFilter" class="bg-[#1a1f35] text-xs sm:text-sm rounded-lg px-3 py-1.5 border border-gray-700/50" onchange="window.renderSchedule()">
+          <option value="all">全部阶段</option>
+          <option value="group">小组赛</option>
+          <option value="r16">1/8决赛</option>
+          <option value="qf">1/4决赛</option>
+          <option value="sf">半决赛</option>
+          <option value="3rd">季军赛</option>
+          <option value="final">决赛</option>
+        </select>
+        <select id="dateFilter" class="bg-[#1a1f35] text-xs sm:text-sm rounded-lg px-3 py-1.5 border border-gray-700/50" onchange="window.renderSchedule()">
+          <option value="all">全部日期</option>
+        </select>
+      </div>
+    </div>
+    <div id="scheduleList" class="space-y-2"></div>
+  </div>
+</section>
+
+<!-- ════ 球队 ════ -->
+<section id="tab-teams" class="tab-content py-4 sm:py-6">
+  <div class="bg-[#111827] rounded-xl p-4 sm:p-6">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+      <h2 class="text-base sm:text-lg font-bold">🏃 球队实力榜</h2>
+      <div class="flex gap-2">
+        <select id="teamGroupFilter" class="bg-[#1a1f35] text-xs sm:text-sm rounded-lg px-3 py-1.5 border border-gray-700/50" onchange="window.renderTeams()">
+          <option value="all">全部小组</option>
+        </select>
+        <select id="teamSort" class="bg-[#1a1f35] text-xs sm:text-sm rounded-lg px-3 py-1.5 border border-gray-700/50" onchange="window.renderTeams()">
+          <option value="rank">按实力排序</option>
+          <option value="name">按名称</option>
+        </select>
+      </div>
+    </div>
+    <div id="teamGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+  </div>
+</section>
+
+<!-- ════ 赔率 ════ -->
+<section id="tab-odds" class="tab-content py-4 sm:py-6">
+  <div class="bg-[#111827] rounded-xl p-4 sm:p-6">
+    <h2 class="text-base sm:text-lg font-bold mb-4">💰 最新赔率</h2>
+    <p class="text-xs sm:text-sm text-gray-500 mb-4">综合多家机构开盘赔率，仅供参考</p>
+    <div id="oddsTableWrap" class="overflow-x-auto">
+      <table class="w-full text-xs sm:text-sm">
+        <thead><tr class="text-gray-400 border-b border-gray-700/50">
+          <th class="text-left py-2 px-2">比赛</th>
+          <th class="text-center py-2 px-2">主胜</th>
+          <th class="text-center py-2 px-2">平局</th>
+          <th class="text-center py-2 px-2">客胜</th>
+          <th class="text-center py-2 px-2 hidden sm:table-cell">让球</th>
+        </tr></thead>
+        <tbody id="oddsBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ════ AI 助手 ════ -->
+<section id="tab-ai" class="tab-content py-4 sm:py-6">
+  <div class="bg-[#111827] rounded-xl p-4 sm:p-6 mb-4">
+    <h2 class="text-base sm:text-lg font-bold mb-4">🤖 AI 分析</h2>
+    <div class="flex flex-col sm:flex-row gap-3 mb-4">
+      <select id="aiMatchSelect" class="bg-[#1a1f35] text-sm rounded-lg px-3 py-2 border border-gray-700/50 flex-1"></select>
+      <button class="bg-yellow-500 hover:bg-yellow-400 text-black font-semibold px-6 py-2 rounded-lg transition-colors text-sm" onclick="window.runAnalysis()">开始分析</button>
+    </div>
+    <div id="aiResult" class="text-gray-500 text-sm py-8 text-center">选择比赛并点击"开始分析"</div>
+  </div>
+
+  <!-- 中国体育彩票 -->
+  <div id="lotteryBlock" class="bg-[#111827] rounded-xl p-4 sm:p-6 border border-red-500/20 hidden">
+    <h2 class="text-base sm:text-lg font-bold mb-4">🎫 中国体育彩票 · 竞彩足球</h2>
+    <div id="lotteryContent"></div>
+  </div>
+</section>
+
+<!-- ════ 对比 ════ -->
+<section id="tab-compare" class="tab-content py-4 sm:py-6">
+  <div class="bg-[#111827] rounded-xl p-4 sm:p-6">
+    <h2 class="text-base sm:text-lg font-bold mb-4">📊 赔率对比</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+      <select id="cmpHome" class="bg-[#1a1f35] text-sm rounded-lg px-3 py-2 border border-gray-700/50"></select>
+      <select id="cmpAway" class="bg-[#1a1f35] text-sm rounded-lg px-3 py-2 border border-gray-700/50"></select>
+    </div>
+    <button class="bg-yellow-500 hover:bg-yellow-400 text-black font-semibold px-6 py-2 rounded-lg transition-colors text-sm mb-4" onclick="window.doCompare()">对比</button>
+    <div id="cmpResult"></div>
+  </div>
+</section>
+
+<!-- ════ 统计 ════ -->
+<section id="tab-stats" class="tab-content py-4 sm:py-6">
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div class="bg-[#111827] rounded-xl p-4 sm:p-6">
+      <h3 class="font-bold mb-3">赔率区间分布</h3>
+      <div id="oddsDistChart" class="space-y-2"></div>
+    </div>
+    <div class="bg-[#111827] rounded-xl p-4 sm:p-6">
+      <h3 class="font-bold mb-3">实力差距概览</h3>
+      <div id="strengthChart" class="space-y-2"></div>
+    </div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  DATA: 48 Teams
+// ══════════════════════════════════════════════════════════
+const TEAMS = [
+  {id:"arg",name:"阿根廷",cn:"阿根廷",en:"Argentina",rank:1,group:"A",pts:1860,color:"#75AADB"},
+  {id:"bra",name:"巴西",cn:"巴西",en:"Brazil",rank:2,group:"B",pts:1840,color:"#F7C85E"},
+  {id:"fra",name:"法国",cn:"法国",en:"France",rank:3,group:"C",pts:1835,color:"#002395"},
+  {id:"eng",name:"英格兰",cn:"英格兰",en:"England",rank:4,group:"D",pts:1820,color:"#CF142B"},
+  {id:"por",name:"葡萄牙",cn:"葡萄牙",en:"Portugal",rank:5,group:"E",pts:1795,color:"#006600"},
+  {id:"esp",name:"西班牙",cn:"西班牙",en:"Spain",rank:6,group:"F",pts:1780,color:"#C60B1E"},
+  {id:"ned",name:"荷兰",cn:"荷兰",en:"Netherlands",rank:7,group:"G",pts:1760,color:"#FF6600"},
+  {id:"ger",name:"德国",cn:"德国",en:"Germany",rank:8,group:"H",pts:1750,color:"#000000"},
+  {id:"ita",name:"意大利",cn:"意大利",en:"Italy",rank:9,group:"A",pts:1740,color:"#008C45"},
+  {id:"uru",name:"乌拉圭",cn:"乌拉圭",en:"Uruguay",rank:10,group:"B",pts:1720,color:"#0038A8"},
+  {id:"bel",name:"比利时",cn:"比利时",en:"Belgium",rank:11,group:"C",pts:1700,color:"#FFE61E"},
+  {id:"cro",name:"克罗地亚",cn:"克罗地亚",en:"Croatia",rank:12,group:"D",pts:1690,color:"#ED1C24"},
+  {id:"sui",name:"瑞士",cn:"瑞士",en:"Switzerland",rank:13,group:"E",pts:1680,color:"#FF0000"},
+  {id:"col",name:"哥伦比亚",cn:"哥伦比亚",en:"Colombia",rank:14,group:"F",pts:1670,color:"#FCD116"},
+  {id:"den",name:"丹麦",cn:"丹麦",en:"Denmark",rank:15,group:"G",pts:1655,color:"#C60C30"},
+  {id:"jpn",name:"日本",cn:"日本",en:"Japan",rank:16,group:"H",pts:1640,color:"#BC002D"},
+  {id:"mar",name:"摩洛哥",cn:"摩洛哥",en:"Morocco",rank:17,group:"A",pts:1630,color:"#C1272D"},
+  {id:"mex",name:"墨西哥",cn:"墨西哥",en:"Mexico",rank:18,group:"B",pts:1620,color:"#006847"},
+  {id:"sen",name:"塞内加尔",cn:"塞内加尔",en:"Senegal",rank:19,group:"C",pts:1610,color:"#00853F"},
+  {id:"kor",name:"韩国",cn:"韩国",en:"South Korea",rank:20,group:"D",pts:1600,color:"#003478"},
+  {id:"ukr",name:"乌克兰",cn:"乌克兰",en:"Ukraine",rank:21,group:"E",pts:1590,color:"#0057B8"},
+  {id:"irn",name:"伊朗",cn:"伊朗",en:"Iran",rank:22,group:"F",pts:1580,color:"#239F40"},
+  {id:"swe",name:"瑞典",cn:"瑞典",en:"Sweden",rank:23,group:"G",pts:1570,color:"#FECC02"},
+  {id:"pol",name:"波兰",cn:"波兰",en:"Poland",rank:24,group:"H",pts:1560,color:"#DC143C"},
+  {id:"aut",name:"奥地利",cn:"奥地利",en:"Austria",rank:25,group:"A",pts:1550,color:"#ED2939"},
+  {id:"aus",name:"澳大利亚",cn:"澳大利亚",en:"Australia",rank:26,group:"B",pts:1540,color:"#FCD116"},
+  {id:"crc",name:"哥斯达黎加",cn:"哥斯达黎加",en:"Costa Rica",rank:27,group:"C",pts:1530,color:"#002B7F"},
+  {id:"per",name:"秘鲁",cn:"秘鲁",en:"Peru",rank:28,group:"D",pts:1520,color:"#D91023"},
+  {id:"egy",name:"埃及",cn:"埃及",en:"Egypt",rank:29,group:"E",pts:1510,color:"#CE1126"},
+  {id:"nga",name:"尼日利亚",cn:"尼日利亚",en:"Nigeria",rank:30,group:"F",pts:1500,color:"#008751"},
+  {id:"cmr",name:"喀麦隆",cn:"喀麦隆",en:"Cameroon",rank:31,group:"G",pts:1490,color:"#007A5E"},
+  {id:"usa",name:"美国",cn:"美国",en:"USA",rank:32,group:"H",pts:1480,color:"#002868"},
+  {id:"ecu",name:"厄瓜多尔",cn:"厄瓜多尔",en:"Ecuador",rank:33,group:"A",pts:1470,color:"#FCD116"},
+  {id:"chn",name:"中国",cn:"中国",en:"China",rank:34,group:"B",pts:1460,color:"#DE2910"},
+  {id:"tun",name:"突尼斯",cn:"突尼斯",en:"Tunisia",rank:35,group:"C",pts:1450,color:"#E70013"},
+  {id:"srb",name:"塞尔维亚",cn:"塞尔维亚",en:"Serbia",rank:36,group:"D",pts:1440,color:"#0C4076"},
+  {id:"nor",name:"挪威",cn:"挪威",en:"Norway",rank:37,group:"E",pts:1430,color:"#EF2B2D"},
+  {id:"tur",name:"土耳其",cn:"土耳其",en:"Turkey",rank:38,group:"F",pts:1420,color:"#E30A17"},
+  {id:"can",name:"加拿大",cn:"加拿大",en:"Canada",rank:39,group:"G",pts:1410,color:"#FF0000"},
+  {id:"wal",name:"威尔士",cn:"威尔士",en:"Wales",rank:40,group:"H",pts:1400,color:"#D81B22"},
+  {id:"svk",name:"斯洛伐克",cn:"斯洛伐克",en:"Slovakia",rank:41,group:"A",pts:1395,color:"#0B4EA2"},
+  {id:"par",name:"巴拉圭",cn:"巴拉圭",en:"Paraguay",rank:42,group:"B",pts:1390,color:"#CD0B0B"},
+  {id:"slo",name:"斯洛文尼亚",cn:"斯洛文尼亚",en:"Slovenia",rank:43,group:"C",pts:1385,color:"#005DA4"},
+  {id:"hun",name:"匈牙利",cn:"匈牙利",en:"Hungary",rank:44,group:"D",pts:1380,color:"#CE2939"},
+  {id:"pan",name:"巴拿马",cn:"巴拿马",en:"Panama",rank:45,group:"E",pts:1370,color:"#0055A4"},
+  {id:"kSA",name:"沙特",cn:"沙特",en:"Saudi Arabia",rank:46,group:"F",pts:1365,color:"#006C35"},
+  {id:"algeria",name:"阿尔及利亚",cn:"阿尔及利亚",en:"Algeria",rank:47,group:"G",pts:1360,color:"#006233"},
+  {id:"nzl",name:"新西兰",cn:"新西兰",en:"New Zealand",rank:48,group:"H",pts:1350,color:"#000000"}
+];
+const TM = {}; TEAMS.forEach(t=>TM[t.id]=t);
+
+// ══════════════════════════════════════════════════════════
+//  MATCHES
+// ══════════════════════════════════════════════════════════
+const MATCHES = [
+  // A组
+  {id:"m001",group:"A",round:"group",home:"arg",away:"ita",date:"2026-06-12"}, {id:"m002",group:"A",round:"group",home:"mar",away:"aut",date:"2026-06-12"}, {id:"m003",group:"A",round:"group",home:"arg",away:"mar",date:"2026-06-16"}, {id:"m004",group:"A",round:"group",home:"ita",away:"svk",date:"2026-06-16"}, {id:"m005",group:"A",round:"group",home:"arg",away:"svk",date:"2026-06-20"}, {id:"m006",group:"A",round:"group",home:"ita",away:"aut",date:"2026-06-20"},
+  // B组
+  {id:"m007",group:"B",round:"group",home:"bra",away:"uru",date:"2026-06-12"}, {id:"m008",group:"B",round:"group",home:"mex",away:"aus",date:"2026-06-13"}, {id:"m009",group:"B",round:"group",home:"bra",away:"mex",date:"2026-06-16"}, {id:"m010",group:"B",round:"group",home:"uru",away:"chn",date:"2026-06-17"}, {id:"m011",group:"B",round:"group",home:"bra",away:"chn",date:"2026-06-21"}, {id:"m012",group:"B",round:"group",home:"uru",away:"aus",date:"2026-06-21"},
+  // C组
+  {id:"m013",group:"C",round:"group",home:"fra",away:"bel",date:"2026-06-13"}, {id:"m014",group:"C",round:"group",home:"sen",away:"crc",date:"2026-06-13"}, {id:"m015",group:"C",round:"group",home:"fra",away:"sen",date:"2026-06-17"}, {id:"m016",group:"C",round:"group",home:"bel",away:"slo",date:"2026-06-17"}, {id:"m017",group:"C",round:"group",home:"fra",away:"slo",date:"2026-06-21"}, {id:"m018",group:"C",round:"group",home:"bel",away:"crc",date:"2026-06-22"},
+  // D组
+  {id:"m019",group:"D",round:"group",home:"eng",away:"cro",date:"2026-06-13"}, {id:"m020",group:"D",round:"group",home:"kor",away:"per",date:"2026-06-14"}, {id:"m021",group:"D",round:"group",home:"eng",away:"kor",date:"2026-06-18"}, {id:"m022",group:"D",round:"group",home:"cro",away:"srb",date:"2026-06-18"}, {id:"m023",group:"D",round:"group",home:"eng",away:"srb",date:"2026-06-22"}, {id:"m024",group:"D",round:"group",home:"cro",away:"per",date:"2026-06-22"},
+  // E组
+  {id:"m025",group:"E",round:"group",home:"por",away:"sui",date:"2026-06-14"}, {id:"m026",group:"E",round:"group",home:"ukr",away:"egy",date:"2026-06-14"}, {id:"m027",group:"E",round:"group",home:"por",away:"ukr",date:"2026-06-18"}, {id:"m028",group:"E",round:"group",home:"sui",away:"nor",date:"2026-06-19"}, {id:"m029",group:"E",round:"group",home:"por",away:"nor",date:"2026-06-23"}, {id:"m030",group:"E",round:"group",home:"sui",away:"egy",date:"2026-06-23"},
+  // F组
+  {id:"m031",group:"F",round:"group",home:"esp",away:"col",date:"2026-06-14"}, {id:"m032",group:"F",round:"group",home:"irn",away:"nga",date:"2026-06-15"}, {id:"m033",group:"F",round:"group",home:"esp",away:"irn",date:"2026-06-19"}, {id:"m034",group:"F",round:"group",home:"col",away:"tur",date:"2026-06-19"}, {id:"m035",group:"F",round:"group",home:"esp",away:"tur",date:"2026-06-23"}, {id:"m036",group:"F",round:"group",home:"col",away:"nga",date:"2026-06-24"},
+  // G组
+  {id:"m037",group:"G",round:"group",home:"ned",away:"den",date:"2026-06-15"}, {id:"m038",group:"G",round:"group",home:"swe",away:"cmr",date:"2026-06-15"}, {id:"m039",group:"G",round:"group",home:"ned",away:"swe",date:"2026-06-19"}, {id:"m040",group:"G",round:"group",home:"den",away:"can",date:"2026-06-20"}, {id:"m041",group:"G",round:"group",home:"ned",away:"can",date:"2026-06-24"}, {id:"m042",group:"G",round:"group",home:"den",away:"cmr",date:"2026-06-24"},
+  // H组
+  {id:"m043",group:"H",round:"group",home:"ger",away:"jpn",date:"2026-06-15"}, {id:"m044",group:"H",round:"group",home:"pol",away:"usa",date:"2026-06-16"}, {id:"m045",group:"H",round:"group",home:"ger",away:"pol",date:"2026-06-20"}, {id:"m046",group:"H",round:"group",home:"jpn",away:"wal",date:"2026-06-20"}, {id:"m047",group:"H",round:"group",home:"ger",away:"wal",date:"2026-06-24"}, {id:"m048",group:"H",round:"group",home:"jpn",away:"usa",date:"2026-06-25"},
+  // R16
+  {id:"m049",round:"r16",home:"1A",away:"2B",date:"2026-06-27"},{id:"m050",round:"r16",home:"1C",away:"2D",date:"2026-06-27"},
+  {id:"m051",round:"r16",home:"1E",away:"2F",date:"2026-06-28"},{id:"m052",round:"r16",home:"1G",away:"2H",date:"2026-06-28"},
+  {id:"m053",round:"r16",home:"1B",away:"2A",date:"2026-06-29"},{id:"m054",round:"r16",home:"1D",away:"2C",date:"2026-06-29"},
+  {id:"m055",round:"r16",home:"1F",away:"2E",date:"2026-06-30"},{id:"m056",round:"r16",home:"1H",away:"2G",date:"2026-06-30"},
+  // QF
+  {id:"m057",round:"qf",home:"W49",away:"W50",date:"2026-07-03"},{id:"m058",round:"qf",home:"W51",away:"W52",date:"2026-07-03"},
+  {id:"m059",round:"qf",home:"W53",away:"W54",date:"2026-07-04"},{id:"m060",round:"qf",home:"W55",away:"W56",date:"2026-07-04"},
+  // SF
+  {id:"m061",round:"sf",home:"W57",away:"W58",date:"2026-07-07"},{id:"m062",round:"sf",home:"W59",away:"W60",date:"2026-07-08"},
+  // 3rd / Final
+  {id:"m063",round:"3rd",home:"L61",away:"L62",date:"2026-07-11"},{id:"m064",round:"final",home:"W61",away:"W62",date:"2026-07-12"}
+];
+
+// ══════════════════════════════════════════════════════════
+//  ODDS generation
+// ══════════════════════════════════════════════════════════
+function genOdds(r1,r2){
+  let diff = r2 - r1;
+  let base = 0.5 + diff * 0.003;
+  base = Math.max(0.15, Math.min(0.85, base));
+  let draw = 0.3 - Math.abs(diff) * 0.002;
+  draw = Math.max(0.1, Math.min(0.35, draw));
+  let away = 1 - base - draw;
+  if(away<0.08){ draw-=0.03; away=1-base-draw; }
+  let hO=1/base, dO=1/draw, aO=1/away;
+  let margin = 1.08;
+  let sum = 1/hO+1/dO+1/aO;
+  hO/=sum*margin; dO/=sum*margin; aO/=sum*margin;
+  return {home:+hO.toFixed(2),draw:+dO.toFixed(2),away:+aO.toFixed(2),probH:+base.toFixed(3),probD:+draw.toFixed(3),probA:+away.toFixed(3)};
+}
+
+function getHandicap(home,away){
+  let d = TM[away].rank - TM[home].rank;
+  if(d<=-8) return {val:-1,label:"让1球"};
+  if(d<=-4) return {val:-0.75,label:"让0.75球"};
+  if(d<=-2) return {val:-0.5,label:"让0.5球"};
+  if(d<=2) return {val:0,label:"平手"};
+  if(d<=4) return {val:0.5,label:"受让0.5球"};
+  if(d<=8) return {val:0.75,label:"受让0.75球"};
+  return {val:1,label:"受让1球"};
+}
+
+const ODDS = {};
+MATCHES.forEach(m=>{
+  if(m.round!="group") return;
+  let r1=TM[m.home].rank, r2=TM[m.away].rank;
+  ODDS[m.id]=genOdds(r1,r2);
+});
+
+const RD_LABEL={group:"小组赛",r16:"1/8决赛",qf:"1/4决赛",sf:"半决赛","3rd":"季军赛",final:"决赛"};
+const GRP_LABEL={A:"A组",B:"B组",C:"C组",D:"D组",E:"E组",F:"F组",G:"G组",H:"H组"};
+
+// ══════════════════════════════════════════════════════════
+//  RESULTS (localStorage)
+// ══════════════════════════════════════════════════════════
+let RESULTS = {};
+try{
+  let r=localStorage.getItem("wc2026_results");
+  if(r) RESULTS=JSON.parse(r);
+}catch(e){}
+
+function saveResult(mid,val){
+  RESULTS[mid]=val;
+  try{localStorage.setItem("wc2026_results",JSON.stringify(RESULTS));}catch(e){}
+  renderAll();
+}
+function clearResults(){
+  RESULTS={};
+  try{localStorage.removeItem("wc2026_results");}catch(e){}
+  renderAll();
+}
+
+// ══════════════════════════════════════════════════════════
+//  UTILITY
+// ══════════════════════════════════════════════════════════
+function dn(id){return TM[id]?TM[id].cn:id;}
+function fmtOdds(o){return o.toFixed(2);}
+
+function isFuture(ds){return ds>new Date().toISOString().slice(0,10);}
+function isPast(ds){return ds<new Date().toISOString().slice(0,10);}
+const TODAY=new Date().toISOString().slice(0,10);
+
+function getMatchResult(m){
+  if(RESULTS[m.id]) return RESULTS[m.id];
+  if(m.round!="group"|| m.home.startsWith("1")||m.home.startsWith("W")||m.home.startsWith("L")) return null;
+  return null;
+}
+
+function getProbColor(p){
+  if(p>=0.45) return "bg-green-500";
+  if(p>=0.30) return "bg-yellow-500";
+  if(p>=0.20) return "bg-orange-500";
+  return "bg-red-500";
+}
+
+// ══════════════════════════════════════════════════════════
+//  LOTTERY (竞彩)
+// ══════════════════════════════════════════════════════════
+function generateCaiPiaoPicks(home,away,matchOdds,hTeam,aTeam){
+  let picks=[],pHome=matchOdds.probH,pDraw=matchOdds.probD,pAway=matchOdds.probA;
+  let favor = Math.max(pHome,pAway);
+  let isHomeFav = pHome >= pAway;
+  let favTeam = isHomeFav ? hTeam : aTeam;
+  let underTeam = isHomeFav ? aTeam : hTeam;
+  let favOdds = isHomeFav ? matchOdds.home : matchOdds.away;
+
+  if(favor>=0.35){
+    picks.push({type:"胜平负",desc:`${favTeam.cn} 胜`,odds:fmtOdds(favOdds),reason:`实力占优，胜率 ${(favor*100).toFixed(0)}%`});
+    let hc = getHandicap(home,away);
+    picks.push({type:"让球胜平负",desc:`${favTeam.cn} ${hc.label} 胜`,odds:"--",reason:"实力差距明显，让球仍可胜"});
+    picks.push({type:"双选",desc:`${favTeam.cn} 胜 + 平`,odds:"--",reason:"防冷平，覆盖率高"});
+  }else if(favor>=0.25){
+    picks.push({type:"胜平负",desc:`${favTeam.cn} 胜`,odds:fmtOdds(favOdds),reason:`胜率 ${(favor*100).toFixed(0)}%，值得一搏`});
+    picks.push({type:"双选",desc:`${favTeam.cn} 不败 (胜/平)`,odds:"--",reason:"双选保底"});
+  }else if(favor>=0.20){
+    picks.push({type:"双选",desc:`${favTeam.cn} 不败`,odds:"--",reason:"双方实力接近，双选稳妥"});
+  }else{
+    picks.push({type:"双选",desc:`平局 + ${favTeam.cn} 胜`,odds:"--",reason:"势均力敌，看好不败"});
+    picks.push({type:"双选",desc:`${underTeam.cn} 不败`,odds:"--",reason:"弱旅有爆冷可能"});
+  }
+  return picks;
+}
+
+function renderCaiPiao(m){
+  if(!m||!m.home||!m.away||m.home.startsWith("1")) return;
+  let o=ODDS[m.id]; if(!o) return;
+  let hTeam=TM[m.home],aTeam=TM[m.away];
+  let hc=getHandicap(m.home,m.away);
+  let picks=generateCaiPiaoPicks(m.home,m.away,o,hTeam,aTeam);
+  let hcOdds=[];
+  if(hc.val<=-0.5){
+    hcOdds=[{label:"主胜",val:fmtOdds(o.home*0.85)},{label:"平",val:fmtOdds(o.draw*0.85)},{label:"客胜",val:fmtOdds(o.away*0.85)}];
+  }else if(hc.val>=0.5){
+    hcOdds=[{label:"主胜",val:fmtOdds(o.home*0.85)},{label:"平",val:fmtOdds(o.draw*0.85)},{label:"客胜",val:fmtOdds(o.away*0.85)}];
+  }else{
+    hcOdds=[{label:"主胜",val:fmtOdds(o.home*0.85)},{label:"平",val:fmtOdds(o.draw*0.85)},{label:"客胜",val:fmtOdds(o.away*0.85)}];
+  }
+
+  let el=document.getElementById("lotteryBlock"),ct=document.getElementById("lotteryContent");
+  el.classList.remove("hidden");
+  ct.innerHTML=`
+    <div class="text-xs text-gray-400 mb-3">${hTeam.cn} vs ${aTeam.cn} · 编号: ${m.id.toUpperCase()}</div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+      <!-- 胜平负 -->
+      <div class="bg-[#1a1f35] rounded-lg p-3 sm:p-4">
+        <div class="text-xs font-semibold text-yellow-400 mb-2">🏷️ 胜平负</div>
+        <div class="grid grid-cols-3 gap-2 text-center text-xs sm:text-sm">
+          <div class="bg-[#0a0e1a] rounded p-2"><div class="font-bold text-green-400">${fmtOdds(o.home)}</div><div class="text-gray-500">主胜</div></div>
+          <div class="bg-[#0a0e1a] rounded p-2"><div class="font-bold text-yellow-400">${fmtOdds(o.draw)}</div><div class="text-gray-500">平局</div></div>
+          <div class="bg-[#0a0e1a] rounded p-2"><div class="font-bold text-red-400">${fmtOdds(o.away)}</div><div class="text-gray-500">客胜</div></div>
+        </div>
+        <div class="prob-bar mt-2">
+          <div class="prob-bar-inner ${getProbColor(o.probH)}" style="width:${(o.probH*100).toFixed(0)}%"></div>
+        </div>
+        <div class="flex justify-between text-[10px] text-gray-500 mt-1">
+          <span>主 ${(o.probH*100).toFixed(0)}%</span>
+          <span>平 ${(o.probD*100).toFixed(0)}%</span>
+          <span>客 ${(o.probA*100).toFixed(0)}%</span>
+        </div>
+      </div>
+
+      <!-- 让球胜平负 -->
+      <div class="bg-[#1a1f35] rounded-lg p-3 sm:p-4">
+        <div class="text-xs font-semibold text-yellow-400 mb-2">🎯 让球胜平负 · ${hc.label}</div>
+        <div class="grid grid-cols-3 gap-2 text-center text-xs sm:text-sm">
+          <div class="bg-[#0a0e1a] rounded p-2"><div class="font-bold text-green-400">${hcOdds[0].val}</div><div class="text-gray-500">主胜</div></div>
+          <div class="bg-[#0a0e1a] rounded p-2"><div class="font-bold text-yellow-400">${hcOdds[1].val}</div><div class="text-gray-500">平局</div></div>
+          <div class="bg-[#0a0e1a] rounded p-2"><div class="font-bold text-red-400">${hcOdds[2].val}</div><div class="text-gray-500">客胜</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 推荐方案 -->
+    <div class="bg-[#1a1f35] rounded-lg p-3 sm:p-4">
+      <div class="text-xs font-semibold text-yellow-400 mb-3">💡 推荐方案 (${picks.length}注)</div>
+      ${picks.map((p,i)=>`
+        <div class="recommend-card">
+          <div class="flex items-center justify-between">
+            <div>
+              <span class="bg-yellow-500/20 text-yellow-300 text-[10px] px-1.5 py-0.5 rounded mr-1">${p.type}</span>
+              <span class="text-sm font-semibold">${p.desc}</span>
+            </div>
+            <span class="text-xs text-yellow-400">${p.odds}</span>
+          </div>
+          <div class="text-xs text-gray-500 mt-1">${p.reason}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// ══════════════════════════════════════════════════════════
+//  TAB SWITCH (GLOBAL)
+// ══════════════════════════════════════════════════════════
+window.switchTab = function(tabId){
+  document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));
+  let target=document.getElementById(tabId);
+  if(target) target.classList.add('active');
+  let btn=document.querySelector(`[data-tab="${tabId}"]`);
+  if(btn) btn.classList.add('active');
+  window.renderAll();
+};
+
+window.renderAll = function(){
+  if(typeof window.renderOverview==='function') window.renderOverview();
+  if(typeof window.renderSchedule==='function') window.renderSchedule();
+  if(typeof window.renderTeams==='function') window.renderTeams();
+  if(typeof window.renderOdds==='function') window.renderOdds();
+  if(typeof window.renderAI==='function') window.renderAI();
+};
+
+// ══════════════════════════════════════════════════════════
+//  RENDER: Overview
+// ══════════════════════════════════════════════════════════
+window.renderOverview = function(){
+  let todayCount=0,finishedCount=0;
+  MATCHES.forEach(m=>{
+    if(m.date===TODAY) todayCount++;
+    if(RESULTS[m.id]) finishedCount++;
+  });
+  document.getElementById("statToday").textContent=todayCount;
+  document.getElementById("statFinished").textContent=finishedCount;
+
+  let groups={};
+  MATCHES.forEach(m=>{
+    if(m.round!="group") return;
+    if(!groups[m.group]) groups[m.group]={label:m.group,matches:[]};
+    groups[m.group].matches.push(m);
+  });
+  let grid=document.getElementById("groupGrid");
+  let h="";
+  for(let g in groups){
+    h+=`<div class="bg-[#1a1f35] rounded-lg p-3"><h3 class="font-bold text-yellow-400 text-xs sm:text-sm mb-2">${GRP_LABEL[g]||g+"组"}</h3>`;
+    groups[g].matches.forEach(m=>{
+      let o=ODDS[m.id];
+      h+=`<div class="flex items-center justify-between py-1.5 border-b border-gray-700/20 last:border-0 text-xs sm:text-sm">
+        <span class="font-medium ${m.home==='arg'?'text-yellow-300':''}">${dn(m.home)}</span>
+        <span class="text-gray-500 px-1">vs</span>
+        <span class="font-medium ${m.away==='arg'?'text-yellow-300':''}">${dn(m.away)}</span>
+        <span class="text-gray-600 text-[10px]">${m.date.slice(5)}</span>
+      </div>`;
+    });
+    h+=`</div>`;
+  }
+  grid.innerHTML=h;
+};
+
+// ══════════════════════════════════════════════════════════
+//  RENDER: Schedule
+// ══════════════════════════════════════════════════════════
+window.renderSchedule = function(){
+  let gf=document.getElementById("groupFilter").value;
+  let rf=document.getElementById("roundFilter").value;
+  let df=document.getElementById("dateFilter").value;
+  let list=document.getElementById("scheduleList");
+  let filtered=MATCHES.filter(m=>{
+    if(rf!="all"&&m.round!=rf) return false;
+    if(df!="all"&&m.date!=df) return false;
+    if(gf!="all"&&m.group!=gf) return false;
+    return true;
+  });
+  if(filtered.length===0){
+    list.innerHTML='<div class="text-gray-500 text-center py-8">暂无匹配比赛</div>';
+    return;
+  }
+  let h="";
+  filtered.forEach(m=>{
+    let o=ODDS[m.id];
+    let res=getMatchResult(m);
+    let isFut=isFuture(m.date);
+    let isPastDate=isPast(m.date)&&!res;
+    let rdLabel=RD_LABEL[m.round]||(m.group?GRP_LABEL[m.group]:"");
+    let dateStr=m.date.slice(5);
+    let homeN=dn(m.home),awayN=dn(m.away);
+    if(m.round!="group"){homeN=m.home;awayN=m.away;}
+
+    h+=`<div class="bg-[#1a1f35] rounded-lg p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${isPastDate?'opacity-60':''}">
+      <div class="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
+        <span class="text-[10px] text-gray-500 w-12 shrink-0">${dateStr}</span>
+        <span class="text-[10px] bg-gray-700/50 text-gray-400 px-1.5 py-0.5 rounded shrink-0">${rdLabel}</span>
+        <span class="font-medium text-xs sm:text-sm truncate ${m.home.startsWith('1')?'text-yellow-300':''}">${homeN}</span>
+        <span class="text-gray-500 text-xs">vs</span>
+        <span class="font-medium text-xs sm:text-sm truncate ${m.away.startsWith('1')?'text-yellow-300':''}">${awayN}</span>
+      </div>
+      <div class="flex items-center gap-2 sm:gap-3 shrink-0">`;
+    if(o&&m.round=="group"){
+      h+=`<span class="text-xs text-green-400">${fmtOdds(o.home)}</span>
+        <span class="text-xs text-yellow-400">${fmtOdds(o.draw)}</span>
+        <span class="text-xs text-red-400">${fmtOdds(o.away)}</span>`;
+    }
+    if(m.round=="group"&&m.home&&!m.home.startsWith("1")){
+      if(!res){
+        h+=`<select class="bg-[#0a0e1a] text-[10px] rounded px-1 py-0.5 border border-gray-700/50" onchange="saveResult('${m.id}',this.value)">
+          <option value="">未赛</option>
+          <option value="H">主胜</option>
+          <option value="D">平</option>
+          <option value="A">客胜</option>
+        </select>`;
+      }else{
+        h+=`<span class="text-[10px] px-2 py-0.5 rounded ${res==='H'?'bg-green-500/20 text-green-400':res==='D'?'bg-yellow-500/20 text-yellow-400':'bg-red-500/20 text-red-400'}">${res==='H'?'主胜':res==='D'?'平':'客胜'}</span>`;
+      }
+    }
+    h+=`</div></div>`;
+  });
+  list.innerHTML=h;
+};
+
+// ══════════════════════════════════════════════════════════
+//  RENDER: Teams
+// ══════════════════════════════════════════════════════════
+window.renderTeams = function(){
+  let gf=document.getElementById("teamGroupFilter").value;
+  let sort=document.getElementById("teamSort").value;
+  let list=TEAMS.filter(t=>gf=="all"||t.group==gf);
+  if(sort=="name") list.sort((a,b)=>a.name.localeCompare(b.name));
+  else list.sort((a,b)=>a.rank-b.rank);
+  let grid=document.getElementById("teamGrid");
+  grid.innerHTML=list.map(t=>`
+    <div class="bg-[#1a1f35] rounded-lg p-3 flex items-center gap-3">
+      <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style="background:${t.color}20;color:${t.color}">${t.rank}</div>
+      <div class="flex-1 min-w-0">
+        <div class="font-semibold text-sm">${t.cn}</div>
+        <div class="text-[10px] text-gray-500">${GRP_LABEL[t.group]} · FIFA ${t.rank}</div>
+      </div>
+      <div class="text-right">
+        <div class="text-xs font-bold text-yellow-400">${t.pts}</div>
+        <div class="text-[9px] text-gray-600">积分</div>
+      </div>
+    </div>
+  `).join('');
+};
+
+// ══════════════════════════════════════════════════════════
+//  RENDER: Odds
+// ══════════════════════════════════════════════════════════
+window.renderOdds = function(){
+  let body=document.getElementById("oddsBody");
+  body.innerHTML=MATCHES.filter(m=>m.round=="group").map(m=>{
+    let o=ODDS[m.id]; if(!o) return '';
+    let hc=getHandicap(m.home,m.away);
+    return `<tr class="border-b border-gray-700/20 odd-cell">
+      <td class="py-2 px-2 text-xs sm:text-sm"><span class="font-medium">${dn(m.home)}</span> <span class="text-gray-500">vs</span> <span class="font-medium">${dn(m.away)}</span></td>
+      <td class="text-center py-2 px-2 text-green-400 font-semibold">${fmtOdds(o.home)}</td>
+      <td class="text-center py-2 px-2 text-yellow-400 font-semibold">${fmtOdds(o.draw)}</td>
+      <td class="text-center py-2 px-2 text-red-400 font-semibold">${fmtOdds(o.away)}</td>
+      <td class="text-center py-2 px-2 text-gray-400 text-xs hidden sm:table-cell">${hc.label}</td>
+    </tr>`;
+  }).join('');
+};
+
+// ══════════════════════════════════════════════════════════
+//  RENDER: AI helper
+// ══════════════════════════════════════════════════════════
+window.renderAI = function(){
+  let sel=document.getElementById("aiMatchSelect");
+  sel.innerHTML=MATCHES.filter(m=>m.round=="group").map(m=>`<option value="${m.id}">${dn(m.home)} vs ${dn(m.away)} (${m.date})</option>`).join('');
+};
+
+window.runAnalysis = function(){
+  let mid=document.getElementById("aiMatchSelect").value;
+  let m=MATCHES.find(x=>x.id==mid);
+  if(!m) return;
+  let o=ODDS[mid];
+  let el=document.getElementById("aiResult");
+  if(!o||!m.home||!m.away||m.home.startsWith("1")){
+    el.innerHTML='<div class="text-gray-500 text-sm py-4">淘汰赛阶段暂不支持分析</div>';
+    document.getElementById("lotteryBlock").classList.add("hidden");
+    return;
+  }
+  let h=TM[m.home],a=TM[m.away];
+  let analysis = [
+    `🏆 ${h.cn} vs ${a.cn}`,
+    ``,
+    `📊 实力对比：`,
+    `  ${h.cn} FIFA排名第${h.rank}位，积分${h.pts}`,
+    `  ${a.cn} FIFA排名第${a.rank}位，积分${a.pts}`,
+    `  实力差距：${Math.abs(h.rank-a.rank)}位`,
+    ``,
+    `📈 概率分布：`,
+    `  主胜 ${(o.probH*100).toFixed(1)}% | 平局 ${(o.probD*100).toFixed(1)}% | 客胜 ${(o.probA*100).toFixed(1)}%`,
+    ``,
+    `💰 参考赔率：`,
+    `  主胜 ${fmtOdds(o.home)} | 平局 ${fmtOdds(o.draw)} | 客胜 ${fmtOdds(o.away)}`,
+    ``,
+    `💡 分析要点：`,
+  ];
+  if(o.probH>=0.40) analysis.push(`  ✅ ${h.cn}胜率较高，实力明显占优`);
+  else if(o.probH>=0.30) analysis.push(`  📌 ${h.cn}略占上风，但需防平局`);
+  else analysis.push(`  ⚠️ 双方实力接近，比赛存在较大不确定性`);
+
+  if(o.probD>=0.28) analysis.push(`  🤝 平局概率较高，值得关注`);
+  if(o.probA>=0.30) analysis.push(`  🔄 ${a.cn}客场具备抢分能力，不可轻视`);
+
+  analysis.push(`\n⚠️ 以上分析仅供参考，请理性投注`);
+  el.innerHTML='<pre class="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap font-sans">'+analysis.join('\n')+'</pre>';
+  renderCaiPiao(m);
+};
+
+// ══════════════════════════════════════════════════════════
+//  RENDER: Compare
+// ══════════════════════════════════════════════════════════
+window.renderCompare = function(){
+  let selH=document.getElementById("cmpHome"),selA=document.getElementById("cmpAway");
+  selH.innerHTML=TEAMS.map(t=>`<option value="${t.id}">${t.cn}</option>`).join('');
+  selA.innerHTML=TEAMS.map(t=>`<option value="${t.id}">${t.cn}</option>`).join('');
+};
+window.doCompare = function(){
+  let hId=document.getElementById("cmpHome").value;
+  let aId=document.getElementById("cmpAway").value;
+  if(hId==aId){document.getElementById("cmpResult").innerHTML='<div class="text-red-400 text-sm">请选择两支不同球队</div>';return;}
+  let h=TM[hId],a=TM[aId];
+  let o=genOdds(h.rank,a.rank);
+  let el=document.getElementById("cmpResult");
+  el.innerHTML=`
+    <div class="bg-[#1a1f35] rounded-lg p-4">
+      <h3 class="font-bold text-sm mb-3">${h.cn} vs ${a.cn}</h3>
+      <div class="grid grid-cols-3 gap-3 text-center mb-3">
+        <div class="bg-[#0a0e1a] rounded p-3"><div class="text-xs text-gray-500">主胜</div><div class="text-lg font-bold text-green-400">${fmtOdds(o.home)}</div><div class="text-[10px] text-gray-600">${(o.probH*100).toFixed(1)}%</div></div>
+        <div class="bg-[#0a0e1a] rounded p-3"><div class="text-xs text-gray-500">平局</div><div class="text-lg font-bold text-yellow-400">${fmtOdds(o.draw)}</div><div class="text-[10px] text-gray-600">${(o.probD*100).toFixed(1)}%</div></div>
+        <div class="bg-[#0a0e1a] rounded p-3"><div class="text-xs text-gray-500">客胜</div><div class="text-lg font-bold text-red-400">${fmtOdds(o.away)}</div><div class="text-[10px] text-gray-600">${(o.probA*100).toFixed(1)}%</div></div>
+      </div>
+      <div class="prob-bar"><div class="prob-bar-inner ${getProbColor(o.probH)}" style="width:${(o.probH*100).toFixed(0)}%"></div></div>
+      <div class="flex justify-between text-[10px] text-gray-500 mt-1"><span>${h.cn} ${(o.probH*100).toFixed(0)}%</span><span>平 ${(o.probD*100).toFixed(0)}%</span><span>${a.cn} ${(o.probA*100).toFixed(0)}%</span></div>
+      <div class="mt-3 pt-3 border-t border-gray-700/20">
+        <div class="text-xs text-gray-400">实力差：${Math.abs(h.rank-a.rank)}位</div>
+        <div class="text-xs text-gray-400">让球：${getHandicap(hId,aId).label}</div>
+      </div>
+    </div>
+  `;
+};
+
+// ══════════════════════════════════════════════════════════
+//  RENDER: Stats
+// ══════════════════════════════════════════════════════════
+window.renderStats = function(){
+  let distEl=document.getElementById("oddsDistChart");
+  let strEl=document.getElementById("strengthChart");
+  let groups={low:0,mid:0,high:0,very_high:0};
+  let strengths={};
+  TEAMS.forEach(t=>{
+    let g=t.group;
+    if(!strengths[g]) strengths[g]={label:GRP_LABEL[g],teams:[],max:t.pts,min:t.pts};
+    strengths[g].teams.push(t.cn);
+    strengths[g].max=Math.max(strengths[g].max,t.pts);
+    strengths[g].min=Math.min(strengths[g].min,t.pts);
+  });
+  let matchCount=0;
+  MATCHES.filter(m=>m.round=="group").forEach(m=>{
+    let o=ODDS[m.id]; if(!o) return;
+    matchCount++;
+    if(o.home<1.5) groups.very_high++;
+    else if(o.home<2.0) groups.high++;
+    else if(o.home<3.0) groups.mid++;
+    else groups.low++;
+  });
+  distEl.innerHTML=`
+    <div class="space-y-2 text-xs">
+      <div><div class="flex justify-between mb-1"><span>超低赔 (&lt;1.5)</span><span class="text-yellow-400">${groups.very_high}场</span></div><div class="prob-bar"><div class="prob-bar-inner bg-red-500" style="width:${(groups.very_high/matchCount*100).toFixed(0)}%"></div></div></div>
+      <div><div class="flex justify-between mb-1"><span>低赔 (1.5-2.0)</span><span class="text-yellow-400">${groups.high}场</span></div><div class="prob-bar"><div class="prob-bar-inner bg-orange-500" style="width:${(groups.high/matchCount*100).toFixed(0)}%"></div></div></div>
+      <div><div class="flex justify-between mb-1"><span>中赔 (2.0-3.0)</span><span class="text-yellow-400">${groups.mid}场</span></div><div class="prob-bar"><div class="prob-bar-inner bg-yellow-500" style="width:${(groups.mid/matchCount*100).toFixed(0)}%"></div></div></div>
+      <div><div class="flex justify-between mb-1"><span>高赔 (&gt;3.0)</span><span class="text-yellow-400">${groups.low}场</span></div><div class="prob-bar"><div class="prob-bar-inner bg-green-500" style="width:${(groups.low/matchCount*100).toFixed(0)}%"></div></div></div>
+    </div>`;
+  let maxRange=0;
+  for(let g in strengths){
+    let r=strengths[g].max-strengths[g].min;
+    if(r>maxRange) maxRange=r;
+  }
+  let maxW=180;
+  strEl.innerHTML=Object.keys(strengths).map(g=>{
+    let s=strengths[g];
+    let range=s.max-s.min;
+    let w=range>0?Math.max(10,range/maxRange*maxW):5;
+    return `<div class="flex items-center gap-2 text-xs">
+      <span class="w-10 text-gray-500">${s.label}</span>
+      <div class="flex-1 prob-bar"><div class="prob-bar-inner bg-blue-500" style="width:${w}px"></div></div>
+      <span class="text-yellow-400 w-16 text-right">${s.max}-${s.min}</span>
+    </div>`;
+  }).join('');
+};
+
+// ══════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded',function(){
+  // Populate filters
+  let groups=[...new Set(TEAMS.map(t=>t.group))].sort();
+  groups.forEach(g=>{
+    let lbl=GRP_LABEL[g];
+    document.getElementById("groupFilter").innerHTML+=`<option value="${g}">${lbl}</option>`;
+    document.getElementById("teamGroupFilter").innerHTML+=`<option value="${g}">${lbl}</option>`;
+  });
+  let dates=[...new Set(MATCHES.filter(m=>m.round=="group").map(m=>m.date))].sort();
+  dates.forEach(d=>{
+    document.getElementById("dateFilter").innerHTML+=`<option value="${d}">${d.slice(5)}</option>`;
+  });
+
+  window.renderOverview();
+  window.renderSchedule();
+  window.renderTeams();
+  window.renderOdds();
+  window.renderAI();
+  window.renderCompare();
+  window.renderStats();
+
+  // handle hash for initial tab
+  if(location.hash){
+    let tab=location.hash.replace('#','');
+    window.switchTab(tab);
+  }
+});
+</script>
+<script>
+// Register Service Worker for PWA
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js').then(function(reg){
+      console.log('SW registered:', reg.scope);
+    }, function(err){
+      console.log('SW registration failed:', err);
+    });
+  });
+}
+</script>
+</body>
+</html>
