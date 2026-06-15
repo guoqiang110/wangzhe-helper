@@ -189,6 +189,7 @@ document.addEventListener('DOMContentLoaded', function(){
         <select id="roundFilter" class="bg-[#1a1f35] text-xs sm:text-sm rounded-lg px-3 py-1.5 border border-gray-700/50" onchange="window.renderSchedule()">
           <option value="all">全部阶段</option>
           <option value="group">小组赛</option>
+          <option value="r32">32强赛</option>
           <option value="r16">1/8决赛</option>
           <option value="qf">1/4决赛</option>
           <option value="sf">半决赛</option>
@@ -297,89 +298,200 @@ document.addEventListener('DOMContentLoaded', function(){
 //  DATA: 48 Teams
 // ══════════════════════════════════════════════════════════
 const TEAMS = [
-  {id:"arg",name:"阿根廷",cn:"阿根廷",en:"Argentina",rank:1,group:"A",pts:1860,color:"#75AADB"},
-  {id:"bra",name:"巴西",cn:"巴西",en:"Brazil",rank:2,group:"B",pts:1840,color:"#F7C85E"},
-  {id:"fra",name:"法国",cn:"法国",en:"France",rank:3,group:"C",pts:1835,color:"#002395"},
-  {id:"eng",name:"英格兰",cn:"英格兰",en:"England",rank:4,group:"D",pts:1820,color:"#CF142B"},
-  {id:"por",name:"葡萄牙",cn:"葡萄牙",en:"Portugal",rank:5,group:"E",pts:1795,color:"#006600"},
-  {id:"esp",name:"西班牙",cn:"西班牙",en:"Spain",rank:6,group:"F",pts:1780,color:"#C60B1E"},
-  {id:"ned",name:"荷兰",cn:"荷兰",en:"Netherlands",rank:7,group:"G",pts:1760,color:"#FF6600"},
-  {id:"ger",name:"德国",cn:"德国",en:"Germany",rank:8,group:"H",pts:1750,color:"#000000"},
-  {id:"ita",name:"意大利",cn:"意大利",en:"Italy",rank:9,group:"A",pts:1740,color:"#008C45"},
-  {id:"uru",name:"乌拉圭",cn:"乌拉圭",en:"Uruguay",rank:10,group:"B",pts:1720,color:"#0038A8"},
-  {id:"bel",name:"比利时",cn:"比利时",en:"Belgium",rank:11,group:"C",pts:1700,color:"#FFE61E"},
-  {id:"cro",name:"克罗地亚",cn:"克罗地亚",en:"Croatia",rank:12,group:"D",pts:1690,color:"#ED1C24"},
-  {id:"sui",name:"瑞士",cn:"瑞士",en:"Switzerland",rank:13,group:"E",pts:1680,color:"#FF0000"},
-  {id:"col",name:"哥伦比亚",cn:"哥伦比亚",en:"Colombia",rank:14,group:"F",pts:1670,color:"#FCD116"},
-  {id:"den",name:"丹麦",cn:"丹麦",en:"Denmark",rank:15,group:"G",pts:1655,color:"#C60C30"},
-  {id:"jpn",name:"日本",cn:"日本",en:"Japan",rank:16,group:"H",pts:1640,color:"#BC002D"},
-  {id:"mar",name:"摩洛哥",cn:"摩洛哥",en:"Morocco",rank:17,group:"A",pts:1630,color:"#C1272D"},
-  {id:"mex",name:"墨西哥",cn:"墨西哥",en:"Mexico",rank:18,group:"B",pts:1620,color:"#006847"},
-  {id:"sen",name:"塞内加尔",cn:"塞内加尔",en:"Senegal",rank:19,group:"C",pts:1610,color:"#00853F"},
-  {id:"kor",name:"韩国",cn:"韩国",en:"South Korea",rank:20,group:"D",pts:1600,color:"#003478"},
-  {id:"ukr",name:"乌克兰",cn:"乌克兰",en:"Ukraine",rank:21,group:"E",pts:1590,color:"#0057B8"},
-  {id:"irn",name:"伊朗",cn:"伊朗",en:"Iran",rank:22,group:"F",pts:1580,color:"#239F40"},
-  {id:"swe",name:"瑞典",cn:"瑞典",en:"Sweden",rank:23,group:"G",pts:1570,color:"#FECC02"},
-  {id:"pol",name:"波兰",cn:"波兰",en:"Poland",rank:24,group:"H",pts:1560,color:"#DC143C"},
-  {id:"aut",name:"奥地利",cn:"奥地利",en:"Austria",rank:25,group:"A",pts:1550,color:"#ED2939"},
-  {id:"aus",name:"澳大利亚",cn:"澳大利亚",en:"Australia",rank:26,group:"B",pts:1540,color:"#FCD116"},
-  {id:"crc",name:"哥斯达黎加",cn:"哥斯达黎加",en:"Costa Rica",rank:27,group:"C",pts:1530,color:"#002B7F"},
-  {id:"per",name:"秘鲁",cn:"秘鲁",en:"Peru",rank:28,group:"D",pts:1520,color:"#D91023"},
-  {id:"egy",name:"埃及",cn:"埃及",en:"Egypt",rank:29,group:"E",pts:1510,color:"#CE1126"},
-  {id:"nga",name:"尼日利亚",cn:"尼日利亚",en:"Nigeria",rank:30,group:"F",pts:1500,color:"#008751"},
-  {id:"cmr",name:"喀麦隆",cn:"喀麦隆",en:"Cameroon",rank:31,group:"G",pts:1490,color:"#007A5E"},
-  {id:"usa",name:"美国",cn:"美国",en:"USA",rank:32,group:"H",pts:1480,color:"#002868"},
-  {id:"ecu",name:"厄瓜多尔",cn:"厄瓜多尔",en:"Ecuador",rank:33,group:"A",pts:1470,color:"#FCD116"},
-  {id:"chn",name:"中国",cn:"中国",en:"China",rank:34,group:"B",pts:1460,color:"#DE2910"},
-  {id:"tun",name:"突尼斯",cn:"突尼斯",en:"Tunisia",rank:35,group:"C",pts:1450,color:"#E70013"},
-  {id:"srb",name:"塞尔维亚",cn:"塞尔维亚",en:"Serbia",rank:36,group:"D",pts:1440,color:"#0C4076"},
-  {id:"nor",name:"挪威",cn:"挪威",en:"Norway",rank:37,group:"E",pts:1430,color:"#EF2B2D"},
-  {id:"tur",name:"土耳其",cn:"土耳其",en:"Turkey",rank:38,group:"F",pts:1420,color:"#E30A17"},
-  {id:"can",name:"加拿大",cn:"加拿大",en:"Canada",rank:39,group:"G",pts:1410,color:"#FF0000"},
-  {id:"wal",name:"威尔士",cn:"威尔士",en:"Wales",rank:40,group:"H",pts:1400,color:"#D81B22"},
-  {id:"svk",name:"斯洛伐克",cn:"斯洛伐克",en:"Slovakia",rank:41,group:"A",pts:1395,color:"#0B4EA2"},
-  {id:"par",name:"巴拉圭",cn:"巴拉圭",en:"Paraguay",rank:42,group:"B",pts:1390,color:"#CD0B0B"},
-  {id:"slo",name:"斯洛文尼亚",cn:"斯洛文尼亚",en:"Slovenia",rank:43,group:"C",pts:1385,color:"#005DA4"},
-  {id:"hun",name:"匈牙利",cn:"匈牙利",en:"Hungary",rank:44,group:"D",pts:1380,color:"#CE2939"},
-  {id:"pan",name:"巴拿马",cn:"巴拿马",en:"Panama",rank:45,group:"E",pts:1370,color:"#0055A4"},
-  {id:"kSA",name:"沙特",cn:"沙特",en:"Saudi Arabia",rank:46,group:"F",pts:1365,color:"#006C35"},
-  {id:"algeria",name:"阿尔及利亚",cn:"阿尔及利亚",en:"Algeria",rank:47,group:"G",pts:1360,color:"#006233"},
-  {id:"nzl",name:"新西兰",cn:"新西兰",en:"New Zealand",rank:48,group:"H",pts:1350,color:"#000000"}
+  // A组
+  {id:"mex",name:"墨西哥",cn:"墨西哥",en:"Mexico",rank:15,group:"A",pts:1690,color:"#006847"},
+  {id:"saf",name:"南非",cn:"南非",en:"South Africa",rank:60,group:"A",pts:1400,color:"#007A4B"},
+  {id:"kor",name:"韩国",cn:"韩国",en:"South Korea",rank:21,group:"A",pts:1630,color:"#003478"},
+  {id:"cze",name:"捷克",cn:"捷克",en:"Czechia",rank:40,group:"A",pts:1530,color:"#D7141A"},
+  // B组
+  {id:"can",name:"加拿大",cn:"加拿大",en:"Canada",rank:39,group:"B",pts:1550,color:"#FF0000"},
+  {id:"bih",name:"波黑",cn:"波黑",en:"Bosnia",rank:55,group:"B",pts:1450,color:"#FAD02C"},
+  {id:"qat",name:"卡塔尔",cn:"卡塔尔",en:"Qatar",rank:50,group:"B",pts:1480,color:"#8A1538"},
+  {id:"sui",name:"瑞士",cn:"瑞士",en:"Switzerland",rank:14,group:"B",pts:1700,color:"#FF0000"},
+  // C组
+  {id:"bra",name:"巴西",cn:"巴西",en:"Brazil",rank:3,group:"C",pts:1835,color:"#F7C85E"},
+  {id:"mar",name:"摩洛哥",cn:"摩洛哥",en:"Morocco",rank:13,group:"C",pts:1710,color:"#C1272D"},
+  {id:"hai",name:"海地",cn:"海地",en:"Haiti",rank:85,group:"C",pts:1300,color:"#00209F"},
+  {id:"sco",name:"苏格兰",cn:"苏格兰",en:"Scotland",rank:35,group:"C",pts:1570,color:"#003876"},
+  // D组
+  {id:"usa",name:"美国",cn:"美国",en:"USA",rank:16,group:"D",pts:1680,color:"#002868"},
+  {id:"par",name:"巴拉圭",cn:"巴拉圭",en:"Paraguay",rank:45,group:"D",pts:1510,color:"#CD0B0B"},
+  {id:"aus",name:"澳大利亚",cn:"澳大利亚",en:"Australia",rank:38,group:"D",pts:1555,color:"#FCD116"},
+  {id:"tur",name:"土耳其",cn:"土耳其",en:"Türkiye",rank:23,group:"D",pts:1610,color:"#E30A17"},
+  // E组
+  {id:"ger",name:"德国",cn:"德国",en:"Germany",rank:8,group:"E",pts:1775,color:"#000000"},
+  {id:"cuw",name:"库拉索",cn:"库拉索",en:"Curaçao",rank:80,group:"E",pts:1320,color:"#003D7A"},
+  {id:"civ",name:"科特迪瓦",cn:"科特迪瓦",en:"Ivory Coast",rank:42,group:"E",pts:1525,color:"#F77F00"},
+  {id:"ecu",name:"厄瓜多尔",cn:"厄瓜多尔",en:"Ecuador",rank:19,group:"E",pts:1650,color:"#FCD116"},
+  // F组
+  {id:"ned",name:"荷兰",cn:"荷兰",en:"Netherlands",rank:7,group:"F",pts:1785,color:"#FF6600"},
+  {id:"jpn",name:"日本",cn:"日本",en:"Japan",rank:17,group:"F",pts:1670,color:"#BC002D"},
+  {id:"swe",name:"瑞典",cn:"瑞典",en:"Sweden",rank:22,group:"F",pts:1620,color:"#FECC02"},
+  {id:"tun",name:"突尼斯",cn:"突尼斯",en:"Tunisia",rank:30,group:"F",pts:1580,color:"#E70013"},
+  // G组
+  {id:"bel",name:"比利时",cn:"比利时",en:"Belgium",rank:9,group:"G",pts:1760,color:"#FFE61E"},
+  {id:"egy",name:"埃及",cn:"埃及",en:"Egypt",rank:33,group:"G",pts:1575,color:"#CE1126"},
+  {id:"irn",name:"伊朗",cn:"伊朗",en:"Iran",rank:20,group:"G",pts:1640,color:"#239F40"},
+  {id:"nzl",name:"新西兰",cn:"新西兰",en:"New Zealand",rank:65,group:"G",pts:1380,color:"#000000"},
+  // H组
+  {id:"esp",name:"西班牙",cn:"西班牙",en:"Spain",rank:6,group:"H",pts:1800,color:"#C60B1E"},
+  {id:"cpv",name:"佛得角",cn:"佛得角",en:"Cape Verde",rank:70,group:"H",pts:1350,color:"#003893"},
+  {id:"ksa",name:"沙特",cn:"沙特",en:"Saudi Arabia",rank:48,group:"H",pts:1490,color:"#006C35"},
+  {id:"uru",name:"乌拉圭",cn:"乌拉圭",en:"Uruguay",rank:11,group:"H",pts:1735,color:"#0038A8"},
+  // I组
+  {id:"fra",name:"法国",cn:"法国",en:"France",rank:2,group:"I",pts:1845,color:"#002395"},
+  {id:"sen",name:"塞内加尔",cn:"塞内加尔",en:"Senegal",rank:18,group:"I",pts:1660,color:"#00853F"},
+  {id:"irq",name:"伊拉克",cn:"伊拉克",en:"Iraq",rank:75,group:"I",pts:1330,color:"#007A5E"},
+  {id:"nor",name:"挪威",cn:"挪威",en:"Norway",rank:25,group:"I",pts:1590,color:"#EF2B2D"},
+  // J组
+  {id:"arg",name:"阿根廷",cn:"阿根廷",en:"Argentina",rank:1,group:"J",pts:1860,color:"#75AADB"},
+  {id:"alg",name:"阿尔及利亚",cn:"阿尔及利亚",en:"Algeria",rank:32,group:"J",pts:1580,color:"#006233"},
+  {id:"aut",name:"奥地利",cn:"奥地利",en:"Austria",rank:24,group:"J",pts:1600,color:"#ED2939"},
+  {id:"jor",name:"约旦",cn:"约旦",en:"Jordan",rank:72,group:"J",pts:1340,color:"#CE1126"},
+  // K组
+  {id:"por",name:"葡萄牙",cn:"葡萄牙",en:"Portugal",rank:5,group:"K",pts:1810,color:"#006600"},
+  {id:"cod",name:"刚果(金)",cn:"刚果(金)",en:"DR Congo",rank:62,group:"K",pts:1390,color:"#007FFF"},
+  {id:"uzb",name:"乌兹别克斯坦",cn:"乌兹别克",en:"Uzbekistan",rank:68,group:"K",pts:1360,color:"#1EB53A"},
+  {id:"col",name:"哥伦比亚",cn:"哥伦比亚",en:"Colombia",rank:12,group:"K",pts:1720,color:"#FCD116"},
+  // L组
+  {id:"eng",name:"英格兰",cn:"英格兰",en:"England",rank:4,group:"L",pts:1825,color:"#CF142B"},
+  {id:"cro",name:"克罗地亚",cn:"克罗地亚",en:"Croatia",rank:10,group:"L",pts:1745,color:"#ED1C24"},
+  {id:"gha",name:"加纳",cn:"加纳",en:"Ghana",rank:44,group:"L",pts:1520,color:"#CE1126"},
+  {id:"pan",name:"巴拿马",cn:"巴拿马",en:"Panama",rank:52,group:"L",pts:1470,color:"#0055A4"}
 ];
 const TM = {}; TEAMS.forEach(t=>TM[t.id]=t);
 
 // ══════════════════════════════════════════════════════════
-//  MATCHES
+//  MATCHES (104场)
 // ══════════════════════════════════════════════════════════
 const MATCHES = [
-  // A组
-  {id:"m001",group:"A",round:"group",home:"arg",away:"ita",date:"2026-06-12"}, {id:"m002",group:"A",round:"group",home:"mar",away:"aut",date:"2026-06-12"}, {id:"m003",group:"A",round:"group",home:"arg",away:"mar",date:"2026-06-16"}, {id:"m004",group:"A",round:"group",home:"ita",away:"svk",date:"2026-06-16"}, {id:"m005",group:"A",round:"group",home:"arg",away:"svk",date:"2026-06-20"}, {id:"m006",group:"A",round:"group",home:"ita",away:"aut",date:"2026-06-20"},
-  // B组
-  {id:"m007",group:"B",round:"group",home:"bra",away:"uru",date:"2026-06-12"}, {id:"m008",group:"B",round:"group",home:"mex",away:"aus",date:"2026-06-13"}, {id:"m009",group:"B",round:"group",home:"bra",away:"mex",date:"2026-06-16"}, {id:"m010",group:"B",round:"group",home:"uru",away:"chn",date:"2026-06-17"}, {id:"m011",group:"B",round:"group",home:"bra",away:"chn",date:"2026-06-21"}, {id:"m012",group:"B",round:"group",home:"uru",away:"aus",date:"2026-06-21"},
-  // C组
-  {id:"m013",group:"C",round:"group",home:"fra",away:"bel",date:"2026-06-13"}, {id:"m014",group:"C",round:"group",home:"sen",away:"crc",date:"2026-06-13"}, {id:"m015",group:"C",round:"group",home:"fra",away:"sen",date:"2026-06-17"}, {id:"m016",group:"C",round:"group",home:"bel",away:"slo",date:"2026-06-17"}, {id:"m017",group:"C",round:"group",home:"fra",away:"slo",date:"2026-06-21"}, {id:"m018",group:"C",round:"group",home:"bel",away:"crc",date:"2026-06-22"},
-  // D组
-  {id:"m019",group:"D",round:"group",home:"eng",away:"cro",date:"2026-06-13"}, {id:"m020",group:"D",round:"group",home:"kor",away:"per",date:"2026-06-14"}, {id:"m021",group:"D",round:"group",home:"eng",away:"kor",date:"2026-06-18"}, {id:"m022",group:"D",round:"group",home:"cro",away:"srb",date:"2026-06-18"}, {id:"m023",group:"D",round:"group",home:"eng",away:"srb",date:"2026-06-22"}, {id:"m024",group:"D",round:"group",home:"cro",away:"per",date:"2026-06-22"},
-  // E组
-  {id:"m025",group:"E",round:"group",home:"por",away:"sui",date:"2026-06-14"}, {id:"m026",group:"E",round:"group",home:"ukr",away:"egy",date:"2026-06-14"}, {id:"m027",group:"E",round:"group",home:"por",away:"ukr",date:"2026-06-18"}, {id:"m028",group:"E",round:"group",home:"sui",away:"nor",date:"2026-06-19"}, {id:"m029",group:"E",round:"group",home:"por",away:"nor",date:"2026-06-23"}, {id:"m030",group:"E",round:"group",home:"sui",away:"egy",date:"2026-06-23"},
-  // F组
-  {id:"m031",group:"F",round:"group",home:"esp",away:"col",date:"2026-06-14"}, {id:"m032",group:"F",round:"group",home:"irn",away:"nga",date:"2026-06-15"}, {id:"m033",group:"F",round:"group",home:"esp",away:"irn",date:"2026-06-19"}, {id:"m034",group:"F",round:"group",home:"col",away:"tur",date:"2026-06-19"}, {id:"m035",group:"F",round:"group",home:"esp",away:"tur",date:"2026-06-23"}, {id:"m036",group:"F",round:"group",home:"col",away:"nga",date:"2026-06-24"},
-  // G组
-  {id:"m037",group:"G",round:"group",home:"ned",away:"den",date:"2026-06-15"}, {id:"m038",group:"G",round:"group",home:"swe",away:"cmr",date:"2026-06-15"}, {id:"m039",group:"G",round:"group",home:"ned",away:"swe",date:"2026-06-19"}, {id:"m040",group:"G",round:"group",home:"den",away:"can",date:"2026-06-20"}, {id:"m041",group:"G",round:"group",home:"ned",away:"can",date:"2026-06-24"}, {id:"m042",group:"G",round:"group",home:"den",away:"cmr",date:"2026-06-24"},
-  // H组
-  {id:"m043",group:"H",round:"group",home:"ger",away:"jpn",date:"2026-06-15"}, {id:"m044",group:"H",round:"group",home:"pol",away:"usa",date:"2026-06-16"}, {id:"m045",group:"H",round:"group",home:"ger",away:"pol",date:"2026-06-20"}, {id:"m046",group:"H",round:"group",home:"jpn",away:"wal",date:"2026-06-20"}, {id:"m047",group:"H",round:"group",home:"ger",away:"wal",date:"2026-06-24"}, {id:"m048",group:"H",round:"group",home:"jpn",away:"usa",date:"2026-06-25"},
+  // ══ 6月12日 ══
+  {id:"m001",group:"A",round:"group",home:"mex",away:"saf",date:"2026-06-12"},
+  {id:"m002",group:"A",round:"group",home:"kor",away:"cze",date:"2026-06-12"},
+  // ══ 6月13日 ══
+  {id:"m003",group:"B",round:"group",home:"can",away:"bih",date:"2026-06-13"},
+  {id:"m004",group:"D",round:"group",home:"usa",away:"par",date:"2026-06-13"},
+  // ══ 6月14日 ══
+  {id:"m005",group:"B",round:"group",home:"qat",away:"sui",date:"2026-06-14"},
+  {id:"m006",group:"C",round:"group",home:"bra",away:"mar",date:"2026-06-14"},
+  {id:"m007",group:"C",round:"group",home:"hai",away:"sco",date:"2026-06-14"},
+  {id:"m008",group:"D",round:"group",home:"aus",away:"tur",date:"2026-06-14"},
+  // ══ 6月15日 ══
+  {id:"m009",group:"E",round:"group",home:"ger",away:"cuw",date:"2026-06-15"},
+  {id:"m010",group:"F",round:"group",home:"ned",away:"jpn",date:"2026-06-15"},
+  {id:"m011",group:"E",round:"group",home:"civ",away:"ecu",date:"2026-06-15"},
+  {id:"m012",group:"F",round:"group",home:"swe",away:"tun",date:"2026-06-15"},
+  // ══ 6月16日 ══
+  {id:"m013",group:"H",round:"group",home:"esp",away:"cpv",date:"2026-06-16"},
+  {id:"m014",group:"G",round:"group",home:"bel",away:"egy",date:"2026-06-16"},
+  {id:"m015",group:"H",round:"group",home:"ksa",away:"uru",date:"2026-06-16"},
+  {id:"m016",group:"G",round:"group",home:"irn",away:"nzl",date:"2026-06-16"},
+  // ══ 6月17日 ══
+  {id:"m017",group:"I",round:"group",home:"fra",away:"sen",date:"2026-06-17"},
+  {id:"m018",group:"I",round:"group",home:"irq",away:"nor",date:"2026-06-17"},
+  {id:"m019",group:"J",round:"group",home:"arg",away:"alg",date:"2026-06-17"},
+  {id:"m020",group:"J",round:"group",home:"aut",away:"jor",date:"2026-06-17"},
+  // ══ 6月18日 ══
+  {id:"m021",group:"K",round:"group",home:"por",away:"cod",date:"2026-06-18"},
+  {id:"m022",group:"L",round:"group",home:"eng",away:"cro",date:"2026-06-18"},
+  {id:"m023",group:"L",round:"group",home:"gha",away:"pan",date:"2026-06-18"},
+  {id:"m024",group:"K",round:"group",home:"uzb",away:"col",date:"2026-06-18"},
+  // ══ 6月19日 ══
+  {id:"m025",group:"A",round:"group",home:"cze",away:"saf",date:"2026-06-19"},
+  {id:"m026",group:"B",round:"group",home:"sui",away:"bih",date:"2026-06-19"},
+  {id:"m027",group:"B",round:"group",home:"can",away:"qat",date:"2026-06-19"},
+  {id:"m028",group:"A",round:"group",home:"mex",away:"kor",date:"2026-06-19"},
+  // ══ 6月20日 ══
+  {id:"m029",group:"D",round:"group",home:"usa",away:"aus",date:"2026-06-20"},
+  {id:"m030",group:"C",round:"group",home:"sco",away:"mar",date:"2026-06-20"},
+  {id:"m031",group:"C",round:"group",home:"bra",away:"hai",date:"2026-06-20"},
+  {id:"m032",group:"D",round:"group",home:"tur",away:"par",date:"2026-06-20"},
+  // ══ 6月21日 ══
+  {id:"m033",group:"F",round:"group",home:"ned",away:"swe",date:"2026-06-21"},
+  {id:"m034",group:"E",round:"group",home:"ger",away:"civ",date:"2026-06-21"},
+  {id:"m035",group:"E",round:"group",home:"ecu",away:"cuw",date:"2026-06-21"},
+  {id:"m036",group:"F",round:"group",home:"tun",away:"jpn",date:"2026-06-21"},
+  // ══ 6月22日 ══
+  {id:"m037",group:"H",round:"group",home:"esp",away:"ksa",date:"2026-06-22"},
+  {id:"m038",group:"G",round:"group",home:"bel",away:"irn",date:"2026-06-22"},
+  {id:"m039",group:"H",round:"group",home:"uru",away:"cpv",date:"2026-06-22"},
+  {id:"m040",group:"G",round:"group",home:"nzl",away:"egy",date:"2026-06-22"},
+  // ══ 6月23日 ══
+  {id:"m041",group:"J",round:"group",home:"arg",away:"aut",date:"2026-06-23"},
+  {id:"m042",group:"I",round:"group",home:"fra",away:"irq",date:"2026-06-23"},
+  {id:"m043",group:"I",round:"group",home:"nor",away:"sen",date:"2026-06-23"},
+  {id:"m044",group:"J",round:"group",home:"jor",away:"alg",date:"2026-06-23"},
+  // ══ 6月24日 ══
+  {id:"m045",group:"K",round:"group",home:"por",away:"uzb",date:"2026-06-24"},
+  {id:"m046",group:"L",round:"group",home:"eng",away:"gha",date:"2026-06-24"},
+  {id:"m047",group:"L",round:"group",home:"pan",away:"cro",date:"2026-06-24"},
+  {id:"m048",group:"K",round:"group",home:"col",away:"cod",date:"2026-06-24"},
+  // ══ 6月25日（收官战1）══
+  {id:"m049",group:"B",round:"group",home:"sui",away:"can",date:"2026-06-25"},
+  {id:"m050",group:"B",round:"group",home:"bih",away:"qat",date:"2026-06-25"},
+  {id:"m051",group:"C",round:"group",home:"sco",away:"bra",date:"2026-06-25"},
+  {id:"m052",group:"C",round:"group",home:"mar",away:"hai",date:"2026-06-25"},
+  {id:"m053",group:"A",round:"group",home:"cze",away:"mex",date:"2026-06-25"},
+  {id:"m054",group:"A",round:"group",home:"saf",away:"kor",date:"2026-06-25"},
+  // ══ 6月26日（收官战2）══
+  {id:"m055",group:"E",round:"group",home:"ecu",away:"ger",date:"2026-06-26"},
+  {id:"m056",group:"E",round:"group",home:"cuw",away:"civ",date:"2026-06-26"},
+  {id:"m057",group:"F",round:"group",home:"jpn",away:"swe",date:"2026-06-26"},
+  {id:"m058",group:"F",round:"group",home:"tun",away:"ned",date:"2026-06-26"},
+  {id:"m059",group:"D",round:"group",home:"tur",away:"usa",date:"2026-06-26"},
+  {id:"m060",group:"D",round:"group",home:"par",away:"aus",date:"2026-06-26"},
+  // ══ 6月27日（收官战3）══
+  {id:"m061",group:"I",round:"group",home:"nor",away:"fra",date:"2026-06-27"},
+  {id:"m062",group:"I",round:"group",home:"sen",away:"irq",date:"2026-06-27"},
+  {id:"m063",group:"H",round:"group",home:"cpv",away:"ksa",date:"2026-06-27"},
+  {id:"m064",group:"H",round:"group",home:"uru",away:"esp",date:"2026-06-27"},
+  {id:"m065",group:"G",round:"group",home:"egy",away:"irn",date:"2026-06-27"},
+  {id:"m066",group:"G",round:"group",home:"nzl",away:"bel",date:"2026-06-27"},
+  // ══ 6月28日（收官战4）══
+  {id:"m067",group:"L",round:"group",home:"pan",away:"eng",date:"2026-06-28"},
+  {id:"m068",group:"L",round:"group",home:"cro",away:"gha",date:"2026-06-28"},
+  {id:"m069",group:"K",round:"group",home:"col",away:"por",date:"2026-06-28"},
+  {id:"m070",group:"K",round:"group",home:"cod",away:"uzb",date:"2026-06-28"},
+  {id:"m071",group:"J",round:"group",home:"alg",away:"aut",date:"2026-06-28"},
+  {id:"m072",group:"J",round:"group",home:"jor",away:"arg",date:"2026-06-28"},
+  // ════════════ 淘汰赛 ════════════
+  // R32
+  {id:"m073",round:"r32",home:"1A",away:"2C",date:"2026-06-29"},
+  {id:"m074",round:"r32",home:"1E",away:"2F",date:"2026-06-29"},
+  {id:"m075",round:"r32",home:"1I",away:"2J",date:"2026-06-30"},
+  {id:"m076",round:"r32",home:"1B",away:"2A",date:"2026-06-30"},
+  {id:"m077",round:"r32",home:"1F",away:"2E",date:"2026-07-01"},
+  {id:"m078",round:"r32",home:"1J",away:"2I",date:"2026-07-01"},
+  {id:"m079",round:"r32",home:"1D",away:"2B",date:"2026-07-02"},
+  {id:"m080",round:"r32",home:"1H",away:"2G",date:"2026-07-02"},
+  {id:"m081",round:"r32",home:"1L",away:"2K",date:"2026-07-03"},
+  {id:"m082",round:"r32",home:"1C",away:"2D",date:"2026-07-03"},
+  {id:"m083",round:"r32",home:"1G",away:"2H",date:"2026-07-04"},
+  {id:"m084",round:"r32",home:"1K",away:"2L",date:"2026-07-04"},
+  {id:"m085",round:"r32",home:"3A",away:"3C",date:"2026-07-05"},
+  {id:"m086",round:"r32",home:"3B",away:"3D",date:"2026-07-05"},
+  {id:"m087",round:"r32",home:"3E",away:"3G",date:"2026-07-06"},
+  {id:"m088",round:"r32",home:"3F",away:"3H",date:"2026-07-06"},
   // R16
-  {id:"m049",round:"r16",home:"1A",away:"2B",date:"2026-06-27"},{id:"m050",round:"r16",home:"1C",away:"2D",date:"2026-06-27"},
-  {id:"m051",round:"r16",home:"1E",away:"2F",date:"2026-06-28"},{id:"m052",round:"r16",home:"1G",away:"2H",date:"2026-06-28"},
-  {id:"m053",round:"r16",home:"1B",away:"2A",date:"2026-06-29"},{id:"m054",round:"r16",home:"1D",away:"2C",date:"2026-06-29"},
-  {id:"m055",round:"r16",home:"1F",away:"2E",date:"2026-06-30"},{id:"m056",round:"r16",home:"1H",away:"2G",date:"2026-06-30"},
+  {id:"m089",round:"r16",home:"W73",away:"W74",date:"2026-07-08"},
+  {id:"m090",round:"r16",home:"W75",away:"W76",date:"2026-07-08"},
+  {id:"m091",round:"r16",home:"W77",away:"W78",date:"2026-07-09"},
+  {id:"m092",round:"r16",home:"W79",away:"W80",date:"2026-07-09"},
+  {id:"m093",round:"r16",home:"W81",away:"W82",date:"2026-07-10"},
+  {id:"m094",round:"r16",home:"W83",away:"W84",date:"2026-07-10"},
+  {id:"m095",round:"r16",home:"W85",away:"W86",date:"2026-07-11"},
+  {id:"m096",round:"r16",home:"W87",away:"W88",date:"2026-07-11"},
   // QF
-  {id:"m057",round:"qf",home:"W49",away:"W50",date:"2026-07-03"},{id:"m058",round:"qf",home:"W51",away:"W52",date:"2026-07-03"},
-  {id:"m059",round:"qf",home:"W53",away:"W54",date:"2026-07-04"},{id:"m060",round:"qf",home:"W55",away:"W56",date:"2026-07-04"},
+  {id:"m097",round:"qf",home:"W89",away:"W90",date:"2026-07-13"},
+  {id:"m098",round:"qf",home:"W91",away:"W92",date:"2026-07-14"},
+  {id:"m099",round:"qf",home:"W93",away:"W94",date:"2026-07-14"},
+  {id:"m100",round:"qf",home:"W95",away:"W96",date:"2026-07-15"},
   // SF
-  {id:"m061",round:"sf",home:"W57",away:"W58",date:"2026-07-07"},{id:"m062",round:"sf",home:"W59",away:"W60",date:"2026-07-08"},
+  {id:"m101",round:"sf",home:"W97",away:"W98",date:"2026-07-17"},
+  {id:"m102",round:"sf",home:"W99",away:"W100",date:"2026-07-18"},
   // 3rd / Final
-  {id:"m063",round:"3rd",home:"L61",away:"L62",date:"2026-07-11"},{id:"m064",round:"final",home:"W61",away:"W62",date:"2026-07-12"}
+  {id:"m103",round:"3rd",home:"L101",away:"L102",date:"2026-07-19"},
+  {id:"m104",round:"final",home:"W101",away:"W102",date:"2026-07-20"}
 ];
 
 // ══════════════════════════════════════════════════════════
@@ -418,8 +530,8 @@ MATCHES.forEach(m=>{
   ODDS[m.id]=genOdds(r1,r2);
 });
 
-const RD_LABEL={group:"小组赛",r16:"1/8决赛",qf:"1/4决赛",sf:"半决赛","3rd":"季军赛",final:"决赛"};
-const GRP_LABEL={A:"A组",B:"B组",C:"C组",D:"D组",E:"E组",F:"F组",G:"G组",H:"H组"};
+const RD_LABEL={group:"小组赛",r32:"1/16决赛",r16:"1/8决赛",qf:"1/4决赛",sf:"半决赛","3rd":"季军赛",final:"决赛"};
+const GRP_LABEL={A:"A组",B:"B组",C:"C组",D:"D组",E:"E组",F:"F组",G:"G组",H:"H组",I:"I组",J:"J组",K:"K组",L:"L组"};
 
 // ══════════════════════════════════════════════════════════
 //  RESULTS (localStorage)
@@ -546,7 +658,11 @@ function predictMatch(homeId,awayId){
 function resolveKnockouts(){
   let rank=calcGroupRankings();
   let rMap={};
-  for(let g in rank){let s=rank[g];if(s[0]) rMap["1"+g]=s[0].id;if(s[1]) rMap["2"+g]=s[1].id;}
+  for(let g in rank){let s=rank[g];
+    if(s[0]) rMap["1"+g]=s[0].id;
+    if(s[1]) rMap["2"+g]=s[1].id;
+    if(s[2]) rMap["3"+g]=s[2].id;
+  }
   let resolved={};
   MATCHES.forEach(m=>{
     resolved[m.id]={home:rMap[m.home]||m.home,away:rMap[m.away]||m.away};
@@ -757,6 +873,7 @@ function renderBracket(){
   let el=document.getElementById("bracketArea");
   let resolved=resolveKnockouts();
   let rankings=calcGroupRankings();
+  let r32=MATCHES.filter(m=>m.round==="r32").map(m=>resolved[m.id]).filter(Boolean);
   let r16=MATCHES.filter(m=>m.round==="r16").map(m=>resolved[m.id]).filter(Boolean);
   let qf=MATCHES.filter(m=>m.round==="qf").map(m=>resolved[m.id]).filter(Boolean);
   let sf=MATCHES.filter(m=>m.round==="sf").map(m=>resolved[m.id]).filter(Boolean);
@@ -766,7 +883,7 @@ function renderBracket(){
 
   let allGroupPlayed=MATCHES.filter(m=>m.round==="group").every(m=>parseResult(m.id));
   if(!allGroupPlayed){
-    el.innerHTML='<div class="text-gray-500 text-sm py-4 text-center">⚪ 小组赛全部结束后显示淘汰赛对阵</div>';
+    el.innerHTML='<div class="text-gray-500 text-sm py-4 text-center">⚪ 小组赛全部结束后显示32强淘汰赛对阵</div>';
     return;
   }
 
@@ -777,10 +894,16 @@ function renderBracket(){
       return `<div class="bracket-match">→ ${hn} <span class="text-yellow-400">${sc}</span> ${an}</div>`;
     }).join('');
 
-  let h=`<div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs"><div class="bracket-round"><div class="text-yellow-400 font-semibold mb-1">1/8决赛</div>${rd(r16)}</div>`;
-  h+=`<div class="bracket-round"><div class="text-yellow-400 font-semibold mb-1">1/4决赛</div>${rd(qf)}</div>`;
-  h+=`<div class="bracket-round"><div class="text-yellow-400 font-semibold mb-1">半决赛</div>${rd(sf)}</div>`;
-  h+=`<div class="bracket-round"><div class="text-yellow-400 font-semibold mb-1">季军赛</div>${rd(third)}<div class="text-yellow-400 font-semibold mt-2 mb-1">🏆 决赛</div>${finalR?rd([finalR]):'<div class="text-gray-500">待定</div>'}</div></div>`;
+  let h=`<div class="grid grid-cols-1 sm:grid-cols-5 gap-2 text-xs">
+    <div class="bracket-round"><div class="text-yellow-400 font-semibold mb-1">1/16决赛</div>${rd(r32)}</div>
+    <div class="bracket-round"><div class="text-yellow-400 font-semibold mb-1">1/8决赛</div>${rd(r16)}</div>
+    <div class="bracket-round"><div class="text-yellow-400 font-semibold mb-1">1/4决赛</div>${rd(qf)}</div>
+    <div class="bracket-round"><div class="text-yellow-400 font-semibold mb-1">半决赛</div>${rd(sf)}</div>
+    <div class="bracket-round">
+      <div class="text-yellow-400 font-semibold mb-1">季军赛</div>${rd(third)}
+      <div class="text-yellow-400 font-semibold mt-2 mb-1">🏆 决赛</div>${finalR?rd([finalR]):'<div class="text-gray-500">待定</div>'}
+    </div>
+  </div>`;
   el.innerHTML=h;
 }
 
@@ -803,6 +926,7 @@ window.renderSchedule = function(){
     return;
   }
   let h="";
+  let koResolved=null;
   filtered.forEach(m=>{
     let o=ODDS[m.id];
     let res=parseResult(m.id);
@@ -811,7 +935,13 @@ window.renderSchedule = function(){
     let rdLabel=RD_LABEL[m.round]||(m.group?GRP_LABEL[m.group]:"");
     let dateStr=m.date.slice(5);
     let homeN=dn(m.home),awayN=dn(m.away);
-    if(m.round!="group"){homeN=m.home;awayN=m.away;}
+    if(m.round!="group"){
+      if(!koResolved) koResolved=resolveKnockouts();
+      let kr=koResolved[m.id];
+      if(kr&&kr.home&&TM[kr.home]){
+        homeN=dn(kr.home);awayN=dn(kr.away);
+      }
+    }
 
     // Prediction for future matches
     let pred=null;
