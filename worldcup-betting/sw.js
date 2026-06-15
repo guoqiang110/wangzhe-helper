@@ -1,4 +1,4 @@
-const CACHE_NAME = 'worldcup-betting-v1';
+const CACHE_NAME = 'worldcup-betting-v2';
 const urlsToCache = [
   '.',
   'index.html',

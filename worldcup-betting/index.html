@@ -49,6 +49,15 @@
   }
 
   .recommend-card { border-left: 3px solid #fbbf24; padding-left: 12px; margin: 8px 0; }
+  /* Standings & Bracket */
+  .standings-table td, .standings-table th { padding: 4px 6px; font-size: 11px; }
+  .standings-rank { width: 20px; font-weight: 700; text-align: center; }
+  .bracket-round { border-left: 2px solid #fbbf24; padding-left: 12px; margin: 4px 0; }
+  .bracket-match { display: flex; align-items: center; gap: 6px; padding: 3px 0; font-size: 12px; }
+  .bracket-match .connector { color: #fbbf24; font-size: 10px; }
+  .score-input { width: 28px; text-align: center; background: #0a0e1a; border: 1px solid #374151; border-radius: 4px; color: #fff; font-size: 13px; padding: 2px; }
+  .score-input:focus { outline: none; border-color: #fbbf24; }
+  .predicted-score { font-size: 12px; color: #fbbf24; background: rgba(251,191,36,.1); padding: 1px 6px; border-radius: 4px; }
 </style>
 <script>
 tailwind.config={theme:{extend:{colors:{primary:'#fbbf24',dark:'#0a0e1a',card:'#111827',card2:'#1a1f35'}}}};
@@ -147,8 +156,14 @@ document.addEventListener('DOMContentLoaded', function(){
   </div>
 
   <div class="bg-[#111827] rounded-xl p-4 sm:p-6 mb-6">
-    <h2 class="text-base sm:text-lg font-bold mb-4">🏆 小组赛对阵</h2>
-    <div id="groupGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+    <h2 class="text-base sm:text-lg font-bold mb-4">🏆 小组积分榜</h2>
+    <div id="standingsArea" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+    <div id="noStandingsMsg" class="text-gray-500 text-sm text-center py-4 hidden">暂无赛果，请在赛程页录入比赛比分</div>
+  </div>
+
+  <div class="bg-[#111827] rounded-xl p-4 sm:p-6 mb-6">
+    <h2 class="text-base sm:text-lg font-bold mb-4">🏆 淘汰赛对阵</h2>
+    <div id="bracketArea" class="text-gray-500 text-sm"></div>
   </div>
 
   <div class="bg-gradient-to-r from-yellow-500/10 to-transparent rounded-xl p-4 sm:p-6 border border-yellow-500/20">
@@ -167,7 +182,7 @@ document.addEventListener('DOMContentLoaded', function(){
   <div class="bg-[#111827] rounded-xl p-4 sm:p-6">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
       <h2 class="text-base sm:text-lg font-bold">📅 完整赛程</h2>
-      <div class="flex gap-2">
+      <div class="flex gap-2 flex-wrap">
         <select id="groupFilter" class="bg-[#1a1f35] text-xs sm:text-sm rounded-lg px-3 py-1.5 border border-gray-700/50" onchange="window.renderSchedule()">
           <option value="all">全部小组</option>
         </select>
@@ -183,6 +198,7 @@ document.addEventListener('DOMContentLoaded', function(){
         <select id="dateFilter" class="bg-[#1a1f35] text-xs sm:text-sm rounded-lg px-3 py-1.5 border border-gray-700/50" onchange="window.renderSchedule()">
           <option value="all">全部日期</option>
         </select>
+        <button class="text-[10px] bg-red-500/10 text-red-400 border border-red-500/30 rounded-lg px-2 py-1 hover:bg-red-500/20" onclick="if(confirm('清空所有赛果？')){clearResults();}">🗑 清空</button>
       </div>
     </div>
     <div id="scheduleList" class="space-y-2"></div>
@@ -424,6 +440,11 @@ function clearResults(){
   try{localStorage.removeItem("wc2026_results");}catch(e){}
   renderAll();
 }
+function deleteScore(mid){
+  delete RESULTS[mid];
+  try{localStorage.setItem("wc2026_results",JSON.stringify(RESULTS));}catch(e){}
+  renderAll();
+}
 
 // ══════════════════════════════════════════════════════════
 //  UTILITY
@@ -435,17 +456,131 @@ function isFuture(ds){return ds>new Date().toISOString().slice(0,10);}
 function isPast(ds){return ds<new Date().toISOString().slice(0,10);}
 const TODAY=new Date().toISOString().slice(0,10);
 
-function getMatchResult(m){
-  if(RESULTS[m.id]) return RESULTS[m.id];
-  if(m.round!="group"|| m.home.startsWith("1")||m.home.startsWith("W")||m.home.startsWith("L")) return null;
-  return null;
-}
-
 function getProbColor(p){
   if(p>=0.45) return "bg-green-500";
   if(p>=0.30) return "bg-yellow-500";
   if(p>=0.20) return "bg-orange-500";
   return "bg-red-500";
+}
+
+// ══════════════════════════════════════════════════════════
+//  RESULT PARSING & GROUP STANDINGS
+// ══════════════════════════════════════════════════════════
+function parseResult(mid){
+  let r=RESULTS[mid];
+  if(!r) return null;
+  if(r==="H") return {h:2,a:0};
+  if(r==="D") return {h:1,a:1};
+  if(r==="A") return {h:0,a:2};
+  let p=r.split("-");
+  if(p.length===2){let h=+p[0],a=+p[1]; if(!isNaN(h)&&!isNaN(a)) return {h,a};}
+  return null;
+}
+
+function saveScore(mid,hg,ag){
+  if(hg===''||ag==='') return;
+  let h=parseInt(hg),a=parseInt(ag);
+  if(isNaN(h)||isNaN(a)) return;
+  RESULTS[mid]=h+"-"+a;
+  try{localStorage.setItem("wc2026_results",JSON.stringify(RESULTS));}catch(e){}
+  renderAll();
+}
+
+function calcGroupRankings(){
+  let grp={};
+  TEAMS.forEach(t=>{grp[t.group]=grp[t.group]||{}});
+  MATCHES.filter(m=>m.round==="group").forEach(m=>{
+    let res=parseResult(m.id);
+    if(!res) return;
+    TEAMS.filter(t=>t.group===m.group).forEach(t=>{
+      if(!grp[m.group][t.id]) grp[m.group][t.id]={id:t.id,name:t.cn,color:t.color,pts:0,w:0,d:0,l:0,gf:0,ga:0,gd:0,p:0};
+    });
+    let h=grp[m.group][m.home],a=grp[m.group][m.away];
+    if(!h||!a) return;
+    h.gf+=res.h;h.ga+=res.a;h.p++;
+    a.gf+=res.a;a.ga+=res.h;a.p++;
+    if(res.h>res.a){h.w++;h.pts+=3;a.l++}
+    else if(res.h===res.a){h.d++;h.pts++;a.d++;a.pts++}
+    else{h.l++;a.w++;a.pts+=3}
+    h.gd=h.gf-h.ga;a.gd=a.gf-a.ga;
+  });
+  let out={};
+  for(let g in grp){
+    out[g]=Object.values(grp[g]).sort((a,b)=>{
+      if(b.pts!==a.pts) return b.pts-a.pts;
+      if(b.gd!==a.gd) return b.gd-a.gd;
+      return b.gf-a.gf;
+    });
+  }
+  return out;
+}
+
+// ══════════════════════════════════════════════════════════
+//  POISSON PREDICTION
+// ══════════════════════════════════════════════════════════
+function poissonProb(lambda,k){
+  let p=Math.exp(-lambda);
+  for(let i=1;i<=k;i++) p*=lambda/i;
+  return p;
+}
+
+function predictMatch(homeId,awayId){
+  let diff=(TM[awayId]?.rank||50)-(TM[homeId]?.rank||50);
+  let lambdaH=Math.max(0.3,Math.min(2.5,1.2+diff*0.008));
+  let lambdaA=Math.max(0.2,Math.min(2.0,0.8-diff*0.008));
+  let hw=0,dr=0,aw=0,bestS="",bestP=0;
+  for(let h=0;h<=6;h++) for(let a=0;a<=6;a++){
+    let p=poissonProb(lambdaH,h)*poissonProb(lambdaA,a);
+    if(h>a) hw+=p; else if(h===a) dr+=p; else aw+=p;
+    if(p>bestP){bestP=p;bestS=h+"-"+a;}
+  }
+  let t=hw+dr+aw;
+  return{lambdaH:+lambdaH.toFixed(3),lambdaA:+lambdaA.toFixed(3),
+    homeWin:+(hw/t).toFixed(3),draw:+(dr/t).toFixed(3),awayWin:+(aw/t).toFixed(3),
+    predictedScore:bestS,confidence:+(bestP*100).toFixed(1)};
+}
+
+// ══════════════════════════════════════════════════════════
+//  KNOCKOUT RESOLUTION
+// ══════════════════════════════════════════════════════════
+function resolveKnockouts(){
+  let rank=calcGroupRankings();
+  let rMap={};
+  for(let g in rank){let s=rank[g];if(s[0]) rMap["1"+g]=s[0].id;if(s[1]) rMap["2"+g]=s[1].id;}
+  let resolved={};
+  MATCHES.forEach(m=>{
+    resolved[m.id]={home:rMap[m.home]||m.home,away:rMap[m.away]||m.away};
+    let res=parseResult(m.id);
+    if(res){resolved[m.id].h=res.h;resolved[m.id].a=res.a;}
+  });
+  for(let p=0;p<10;p++){
+    MATCHES.forEach(m=>{
+      let r=resolved[m.id]; if(!r) return;
+      ["home","away"].forEach(side=>{
+        let v=r[side];
+        if(typeof v==='string'&&(v.startsWith("W")||v.startsWith("L"))){
+          let pref=v[0],midNum=v.slice(1).padStart(3,"0");
+          let prev=resolved["m"+midNum];
+          if(prev&&prev.h!==void 0){
+            r[side]=pref==="W"?(prev.h>prev.a?prev.home:prev.away):(prev.h>prev.a?prev.away:prev.home);
+          }
+        }
+      });
+    });
+  }
+  return resolved;
+}
+
+function dnKnockout(teamId,rankings){
+  if(!teamId||typeof teamId!=='string') return teamId||"—";
+  if(rankings){
+    for(let g in rankings){
+      let r=rankings[g];
+      if(r.length>0&&r[0].id===teamId) return r[0].name;
+      if(r.length>1&&r[1].id===teamId) return r[1].name;
+    }
+  }
+  return TM[teamId]?TM[teamId].cn:teamId;
 }
 
 // ══════════════════════════════════════════════════════════
@@ -578,29 +713,76 @@ window.renderOverview = function(){
   document.getElementById("statToday").textContent=todayCount;
   document.getElementById("statFinished").textContent=finishedCount;
 
-  let groups={};
-  MATCHES.forEach(m=>{
-    if(m.round!="group") return;
-    if(!groups[m.group]) groups[m.group]={label:m.group,matches:[]};
-    groups[m.group].matches.push(m);
-  });
-  let grid=document.getElementById("groupGrid");
-  let h="";
-  for(let g in groups){
-    h+=`<div class="bg-[#1a1f35] rounded-lg p-3"><h3 class="font-bold text-yellow-400 text-xs sm:text-sm mb-2">${GRP_LABEL[g]||g+"组"}</h3>`;
-    groups[g].matches.forEach(m=>{
-      let o=ODDS[m.id];
-      h+=`<div class="flex items-center justify-between py-1.5 border-b border-gray-700/20 last:border-0 text-xs sm:text-sm">
-        <span class="font-medium ${m.home==='arg'?'text-yellow-300':''}">${dn(m.home)}</span>
-        <span class="text-gray-500 px-1">vs</span>
-        <span class="font-medium ${m.away==='arg'?'text-yellow-300':''}">${dn(m.away)}</span>
-        <span class="text-gray-600 text-[10px]">${m.date.slice(5)}</span>
+  // Standings
+  let rankings=calcGroupRankings();
+  let sa=document.getElementById("standingsArea");
+  let nm=document.getElementById("noStandingsMsg");
+  let hasAny=Object.values(rankings).some(arr=>arr.length>0&&arr.some(t=>t.p>0));
+  nm.classList.toggle("hidden",hasAny);
+  if(hasAny){
+    sa.innerHTML=Object.keys(rankings).map(g=>{
+      let rows=rankings[g];
+      return `<div class="bg-[#1a1f35] rounded-lg p-2 sm:p-3">
+        <h3 class="font-bold text-yellow-400 text-xs sm:text-sm mb-2">${GRP_LABEL[g]} ${rows[0]&&rows[0].p>0?'':'⚪'}</h3>
+        <table class="w-full standings-table text-gray-300">
+          <thead><tr class="text-gray-500 border-b border-gray-700/30">
+            <th class="standings-rank">#</th>
+            <th class="text-left">球队</th>
+            <th>赛</th><th>胜</th><th>平</th><th>负</th>
+            <th>净</th><th>分</th>
+          </tr></thead>
+          <tbody>${rows.map((r,i)=>`<tr class="border-b border-gray-700/10 ${i<2?'text-yellow-300':''}">
+            <td class="standings-rank">${i+1}</td>
+            <td class="font-medium text-xs">${r.name}</td>
+            <td class="text-center">${r.p}</td>
+            <td class="text-center text-green-400">${r.w}</td>
+            <td class="text-center text-yellow-400">${r.d}</td>
+            <td class="text-center text-red-400">${r.l}</td>
+            <td class="text-center ${r.gd>0?'text-green-400':r.gd<0?'text-red-400':''}">${r.gd>0?'+':''}${r.gd}</td>
+            <td class="text-center font-bold text-yellow-400">${r.pts}</td>
+          </tr>`).join('')}</tbody>
+        </table>
+        ${rows[0]&&rows[0].p>0&&rows.length>=2?`<div class="text-[10px] text-gray-600 mt-1">🏆 ${rows[0].name} 出线 · ${rows[1].name} 出线</div>`:''}
       </div>`;
-    });
-    h+=`</div>`;
+    }).join('');
+  }else{
+    sa.innerHTML="";
   }
-  grid.innerHTML=h;
+
+  // Bracket
+  renderBracket();
 };
+
+function renderBracket(){
+  let el=document.getElementById("bracketArea");
+  let resolved=resolveKnockouts();
+  let rankings=calcGroupRankings();
+  let r16=MATCHES.filter(m=>m.round==="r16").map(m=>resolved[m.id]).filter(Boolean);
+  let qf=MATCHES.filter(m=>m.round==="qf").map(m=>resolved[m.id]).filter(Boolean);
+  let sf=MATCHES.filter(m=>m.round==="sf").map(m=>resolved[m.id]).filter(Boolean);
+  let third=MATCHES.filter(m=>m.round==="3rd").map(m=>resolved[m.id]).filter(Boolean);
+  let finalM=MATCHES.find(m=>m.round==="final");
+  let finalR=finalM?resolved[finalM.id]:null;
+
+  let allGroupPlayed=MATCHES.filter(m=>m.round==="group").every(m=>parseResult(m.id));
+  if(!allGroupPlayed){
+    el.innerHTML='<div class="text-gray-500 text-sm py-4 text-center">⚪ 小组赛全部结束后显示淘汰赛对阵</div>';
+    return;
+  }
+
+  let rd=(resolved)=>
+    resolved.map(r=>{
+      let hn=dnKnockout(r.home,rankings),an=dnKnockout(r.away,rankings);
+      let sc=r.h!==void 0?`${r.h}-${r.a}`:`<span class="text-gray-600">vs</span>`;
+      return `<div class="bracket-match">→ ${hn} <span class="text-yellow-400">${sc}</span> ${an}</div>`;
+    }).join('');
+
+  let h=`<div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs"><div class="bracket-round"><div class="text-yellow-400 font-semibold mb-1">1/8决赛</div>${rd(r16)}</div>`;
+  h+=`<div class="bracket-round"><div class="text-yellow-400 font-semibold mb-1">1/4决赛</div>${rd(qf)}</div>`;
+  h+=`<div class="bracket-round"><div class="text-yellow-400 font-semibold mb-1">半决赛</div>${rd(sf)}</div>`;
+  h+=`<div class="bracket-round"><div class="text-yellow-400 font-semibold mb-1">季军赛</div>${rd(third)}<div class="text-yellow-400 font-semibold mt-2 mb-1">🏆 决赛</div>${finalR?rd([finalR]):'<div class="text-gray-500">待定</div>'}</div></div>`;
+  el.innerHTML=h;
+}
 
 // ══════════════════════════════════════════════════════════
 //  RENDER: Schedule
@@ -623,7 +805,7 @@ window.renderSchedule = function(){
   let h="";
   filtered.forEach(m=>{
     let o=ODDS[m.id];
-    let res=getMatchResult(m);
+    let res=parseResult(m.id);
     let isFut=isFuture(m.date);
     let isPastDate=isPast(m.date)&&!res;
     let rdLabel=RD_LABEL[m.round]||(m.group?GRP_LABEL[m.group]:"");
@@ -631,30 +813,42 @@ window.renderSchedule = function(){
     let homeN=dn(m.home),awayN=dn(m.away);
     if(m.round!="group"){homeN=m.home;awayN=m.away;}
 
-    h+=`<div class="bg-[#1a1f35] rounded-lg p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${isPastDate?'opacity-60':''}">
+    // Prediction for future matches
+    let pred=null;
+    if(m.round==="group"&&isFut&&m.home&&!m.home.startsWith("1")){
+      pred=predictMatch(m.home,m.away);
+    }
+
+    h+=`<div class="bg-[#1a1f35] rounded-lg p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${isPastDate&&!res?'opacity-60':''}">
       <div class="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
         <span class="text-[10px] text-gray-500 w-12 shrink-0">${dateStr}</span>
         <span class="text-[10px] bg-gray-700/50 text-gray-400 px-1.5 py-0.5 rounded shrink-0">${rdLabel}</span>
         <span class="font-medium text-xs sm:text-sm truncate ${m.home.startsWith('1')?'text-yellow-300':''}">${homeN}</span>
-        <span class="text-gray-500 text-xs">vs</span>
+        ${res?`<span class="text-yellow-400 font-bold text-sm">${res.h}-${res.a}</span>`:`<span class="text-gray-500 text-xs">vs</span>`}
         <span class="font-medium text-xs sm:text-sm truncate ${m.away.startsWith('1')?'text-yellow-300':''}">${awayN}</span>
+        ${pred?`<span class="predicted-score">预测 ${pred.predictedScore}</span>`:''}
       </div>
-      <div class="flex items-center gap-2 sm:gap-3 shrink-0">`;
+      <div class="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap">`;
     if(o&&m.round=="group"){
       h+=`<span class="text-xs text-green-400">${fmtOdds(o.home)}</span>
         <span class="text-xs text-yellow-400">${fmtOdds(o.draw)}</span>
         <span class="text-xs text-red-400">${fmtOdds(o.away)}</span>`;
     }
-    if(m.round=="group"&&m.home&&!m.home.startsWith("1")){
+    if(m.round=="group"&&m.home&&!m.home.startsWith("1")&&!m.home.startsWith("W")&&!m.home.startsWith("L")){
       if(!res){
-        h+=`<select class="bg-[#0a0e1a] text-[10px] rounded px-1 py-0.5 border border-gray-700/50" onchange="saveResult('${m.id}',this.value)">
-          <option value="">未赛</option>
-          <option value="H">主胜</option>
-          <option value="D">平</option>
-          <option value="A">客胜</option>
-        </select>`;
+        let cur=RESULTS[m.id];
+        let curH="",curA="";
+        if(cur&&cur.includes("-")){let pp=cur.split("-");curH=pp[0];curA=pp[1];}
+        h+=`<input type="number" min="0" max="15" class="score-input" value="${curH}" placeholder="主" onchange="saveScore('${m.id}',this.value,this.nextElementSibling.value)">`;
+        h+=`<span class="text-gray-500 text-xs">:</span>`;
+        h+=`<input type="number" min="0" max="15" class="score-input" value="${curA}" placeholder="客" onchange="saveScore('${m.id}',this.previousElementSibling.previousElementSibling.value,this.value)">`;
+        if(pred){
+          let [ph,pa]=pred.predictedScore.split("-");
+          h+=`<span class="text-[10px] text-gray-600 cursor-pointer" onclick="this.parentElement.querySelectorAll('.score-input')[0].value=${ph};this.parentElement.querySelectorAll('.score-input')[1].value=${pa};saveScore('${m.id}',${ph},${pa})" title="填入预测比分">📌${pred.predictedScore}</span>`;
+        }
       }else{
-        h+=`<span class="text-[10px] px-2 py-0.5 rounded ${res==='H'?'bg-green-500/20 text-green-400':res==='D'?'bg-yellow-500/20 text-yellow-400':'bg-red-500/20 text-red-400'}">${res==='H'?'主胜':res==='D'?'平':'客胜'}</span>`;
+        h+=`<span class="text-[10px] px-2 py-0.5 rounded ${res.h>res.a?'bg-green-500/20 text-green-400':res.h===res.a?'bg-yellow-500/20 text-yellow-400':'bg-red-500/20 text-red-400'}">${res.h>res.a?'主胜':res.h===res.a?'平':'客胜'}</span>`;
+        h+=`<span class="text-[9px] text-gray-600 cursor-pointer hover:text-red-400" onclick="deleteScore('${m.id}')">✕</span>`;
       }
     }
     h+=`</div></div>`;
@@ -725,6 +919,7 @@ window.runAnalysis = function(){
     return;
   }
   let h=TM[m.home],a=TM[m.away];
+  let pred=predictMatch(m.home,m.away);
   let analysis = [
     `🏆 ${h.cn} vs ${a.cn}`,
     ``,
@@ -733,7 +928,12 @@ window.runAnalysis = function(){
     `  ${a.cn} FIFA排名第${a.rank}位，积分${a.pts}`,
     `  实力差距：${Math.abs(h.rank-a.rank)}位`,
     ``,
-    `📈 概率分布：`,
+    `🔮 AI泊松预测：`,
+    `  预测比分：${pred.predictedScore}`,
+    `  主队期望进球 λ=${pred.lambdaH} | 客队期望进球 λ=${pred.lambdaA}`,
+    `  主胜 ${(pred.homeWin*100).toFixed(1)}% | 平局 ${(pred.draw*100).toFixed(1)}% | 客胜 ${(pred.awayWin*100).toFixed(1)}%`,
+    ``,
+    `📈 赔率概率分布：`,
     `  主胜 ${(o.probH*100).toFixed(1)}% | 平局 ${(o.probD*100).toFixed(1)}% | 客胜 ${(o.probA*100).toFixed(1)}%`,
     ``,
     `💰 参考赔率：`,
